@@ -9,7 +9,7 @@
   <style>
     :root { --bg: #0d0f14; --card: #161a22; --border: #2a3142; --blue: #3b82f6; --muted: #8b92a5; --text: #e6e9f0; --err: #ef4444; }
     * { box-sizing: border-box; }
-    body { font-family: 'Outfit', sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 24px; min-height: 100vh; display: flex; align-items: center; justify-content: center; }
+    body { font-family: 'Outfit', sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center; }
     .box { width: 100%; max-width: 340px; background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 28px; }
     h1 { font-size: 1.35rem; margin: 0 0 8px; }
     .sub { color: var(--muted); font-size: 0.9rem; margin-bottom: 24px; }
@@ -27,9 +27,37 @@
     a { color: var(--blue); text-decoration: none; }
     a:hover { text-decoration: underline; }
     .back { display: inline-block; margin-bottom: 16px; }
+    body { flex-direction: column; align-items: stretch; overflow: hidden; }
+    .auth-body-wrap { display: flex; flex: 1; min-width: 0; min-height: 0; }
+    .leaderboard-sidebar {
+      flex-shrink: 0; background: var(--card); border-right: 1px solid var(--border);
+      padding: 16px; overflow-y: auto; min-height: 0;
+    }
+    .leaderboard-sidebar h2 { font-size: 0.95rem; margin: 0 0 10px; color: var(--muted); font-weight: 600; }
+    .leaderboard-sidebar select { width: 100%; padding: 8px 10px; margin-bottom: 12px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--text); font-size: 0.85rem; font-family: inherit; cursor: pointer; }
+    .leaderboard-list { list-style: none; margin: 0; padding: 0; font-size: 0.85rem; }
+    .leaderboard-list li { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--border); gap: 6px; font-size: 0.8rem; }
+    .leaderboard-list li:last-child { border-bottom: none; }
+    .leaderboard-list .rank { color: var(--muted); font-variant-numeric: tabular-nums; min-width: 18px; }
+    .leaderboard-list .name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .leaderboard-list .team { color: var(--muted); font-variant-numeric: tabular-nums; min-width: 28px; text-align: right; }
+    .leaderboard-list .balance { color: #22c55e; font-weight: 600; font-variant-numeric: tabular-nums; min-width: 36px; text-align: right; }
+    .leaderboard-list .you { color: var(--blue); font-weight: 600; }
+    #leaderboardResizer { width: 6px; flex-shrink: 0; cursor: col-resize; background: var(--border); transition: background 0.15s; }
+    #leaderboardResizer:hover, #leaderboardResizer.dragging { background: var(--blue); }
+    .auth-center { flex: 1; display: flex; align-items: center; justify-content: center; padding: 24px; overflow-y: auto; min-width: 0; min-height: 0; }
   </style>
 </head>
 <body>
+  <div id="top-bar-placeholder" style="min-height: 52px; background: #161a22; border-bottom: 1px solid #2a3142;"></div>
+  <div class="auth-body-wrap">
+  <aside class="leaderboard-sidebar" id="leaderboardSidebar">
+    <h2>Leaderboard</h2>
+    <select id="leaderboardSort"><option value="all">All</option></select>
+    <ul class="leaderboard-list" id="leaderboardList"></ul>
+  </aside>
+  <div id="leaderboardResizer" title="Drag to resize"></div>
+  <div class="auth-center">
   <div>
     <a class="back" href="/frontend.html">← Back</a>
     <div class="box">
@@ -63,7 +91,51 @@
       </div>
     </div>
   </div>
+  </div>
+  </div>
   <script src="auth.js"></script>
+  <script src="topbar.js"></script>
+  <script>
+    (function () {
+      var sidebar = document.getElementById('leaderboardSidebar');
+      var resizerEl = document.getElementById('leaderboardResizer');
+      var list = document.getElementById('leaderboardList');
+      var sort = document.getElementById('leaderboardSort');
+      if (sidebar && resizerEl) {
+        var STORAGE_KEY = 'authLeaderboardWidth', MIN = 160, MAX = 480, DEFAULT = 220;
+        function getW() { var w = localStorage.getItem(STORAGE_KEY); if (w != null) { var n = parseInt(w, 10); if (!isNaN(n) && n >= MIN && n <= MAX) return n; } return DEFAULT; }
+        function setW(w) { localStorage.setItem(STORAGE_KEY, String(w)); }
+        sidebar.style.width = getW() + 'px';
+        resizerEl.addEventListener('mousedown', function (e) {
+          e.preventDefault(); resizerEl.classList.add('dragging'); document.body.style.userSelect = 'none';
+          var startX = e.clientX, startW = sidebar.offsetWidth;
+          function move(e2) { var n = Math.min(MAX, Math.max(MIN, startW + (e2.clientX - startX))); sidebar.style.width = n + 'px'; setW(n); }
+          function up() { resizerEl.classList.remove('dragging'); document.body.style.userSelect = ''; document.removeEventListener('mousemove', move); document.removeEventListener('mouseup', up); }
+          document.addEventListener('mousemove', move); document.addEventListener('mouseup', up);
+        });
+      }
+      if (list && sort) {
+        function load() {
+          var user = typeof auth !== 'undefined' ? auth.getUser() : null;
+          var url = sort.value === 'team' && user && user.teamNumber ? '/api/leaderboard?team=' + encodeURIComponent(user.teamNumber) : '/api/leaderboard';
+          fetch(url).then(function (r) { return r.json(); }).then(function (data) {
+            var rows = data.list || [];
+            list.innerHTML = rows.length === 0 ? '<li style="color: var(--muted);">No one yet</li>' : rows.map(function (row) {
+              var isYou = user && String(user.id) === String(row.id);
+              var team = row.teamNumber != null && row.teamNumber !== '' ? row.teamNumber : '—';
+              return '<li><span class="rank">#' + row.rank + '</span><span class="name' + (isYou ? ' you' : '') + '">' + (row.username || '—') + (isYou ? ' (you)' : '') + '</span><span class="team">' + team + '</span><span class="balance">$' + Number(row.balance).toFixed(0) + '</span></li>';
+            }).join('');
+          }).catch(function () { list.innerHTML = '<li style="color: var(--muted);">Could not load</li>'; });
+        }
+        var user = typeof auth !== 'undefined' ? auth.getUser() : null;
+        var opt = document.createElement('option'); opt.value = 'team'; opt.textContent = 'My team';
+        if (user && user.teamNumber) sort.appendChild(opt);
+        sort.addEventListener('change', load);
+        load();
+        document.addEventListener('auth-state-changed', load);
+      }
+    })();
+  </script>
   <script>
     const tabSignup = document.getElementById("tabSignup");
     const tabLogin = document.getElementById("tabLogin");

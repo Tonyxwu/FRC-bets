@@ -34,9 +34,13 @@
     .order-row .market { font-weight: 600; }
     .order-row .time { color: var(--muted); }
     .login-prompt { padding: 20px; text-align: center; color: var(--muted); }
+    body { display: flex; flex-direction: column; min-height: 100vh; margin: 0; padding: 0; }
+    .bets-page-wrap { flex: 1; padding: 24px; }
   </style>
 </head>
 <body>
+  <div id="top-bar-placeholder" style="min-height: 52px; background: #161a22; border-bottom: 1px solid #2a3142;"></div>
+  <div class="bets-page-wrap">
   <div class="container">
     <a class="back" href="/frontend.html">← Back to matches</a>
     <h1>My bets</h1>
@@ -46,7 +50,9 @@
       <p style="color: var(--muted);">Loading…</p>
     </div>
   </div>
+  </div>
   <script src="auth.js"></script>
+  <script src="topbar.js"></script>
   <script>
     const content = document.getElementById('content');
 

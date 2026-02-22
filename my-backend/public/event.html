@@ -17,10 +17,10 @@
       --text: #e6e9f0;
     }
     * { box-sizing: border-box; }
-    body { font-family: 'Outfit', sans-serif; background: var(--bg); color: var(--text); margin: 0; min-height: 100vh; display: flex; }
+    body { font-family: 'Outfit', sans-serif; background: var(--bg); color: var(--text); margin: 0; min-height: 100vh; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
     .leaderboard-sidebar {
       flex-shrink: 0; background: var(--card); border-right: 1px solid var(--border);
-      padding: 16px; overflow-y: auto;
+      padding: 16px; overflow-y: auto; min-height: 0;
     }
     .leaderboard-sidebar h2 { font-size: 0.95rem; margin: 0 0 10px; color: var(--muted); font-weight: 600; }
     .leaderboard-sidebar select {
@@ -40,7 +40,7 @@
       transition: background 0.15s;
     }
     .resizer:hover, .resizer.dragging { background: var(--blue); }
-    .event-main { flex: 1; min-width: 0; padding: 24px; overflow-y: auto; }
+    .event-main { flex: 1; min-width: 0; min-height: 0; padding: 24px; overflow-y: auto; }
     .event-main .event-title { font-size: 1.25rem; font-weight: 700; margin: 0 0 16px; }
     .video-container {
       position: relative; width: 100%; max-width: 640px; margin-bottom: 24px;
@@ -116,9 +116,13 @@
       border-radius: 6px; padding: 6px 10px; margin-right: 8px;
     }
     .sim-clock span.label { color: var(--muted); font-size: 0.75rem; margin-right: 6px; }
+    body { flex-direction: column; }
+    .event-body-wrap { display: flex; flex: 1; min-width: 0; min-height: 0; }
   </style>
 </head>
 <body>
+  <div id="top-bar-placeholder" style="min-height: 52px; background: #161a22; border-bottom: 1px solid #2a3142;"></div>
+  <div class="event-body-wrap">
   <aside class="leaderboard-sidebar" id="leaderboardSidebar">
     <h2>Leaderboard</h2>
     <select id="leaderboardSort">
@@ -134,15 +138,6 @@
         <a class="back-link" href="/frontend.html">← Back to events</a>
         <h1 class="event-title" id="eventTitle">Loading…</h1>
       </div>
-      <div class="header-right" id="authBar">
-        <span class="sim-clock" id="simClock" style="display: none;"><span class="label">Sim time</span><span id="simClockTime">—</span></span>
-        <span id="userBalance" class="balance" style="display: none;"></span>
-        <span id="userName" style="display: none;"></span>
-        <a href="/bets.html" id="linkBets" style="display: none;">My bets</a>
-        <a href="/auth.html" id="linkSignup" style="display: none;">Sign up</a>
-        <a href="/auth.html" id="linkLogin" style="display: none;">Log in</a>
-        <button type="button" id="btnLogout" style="display: none;">Log out</button>
-      </div>
     </div>
     <div class="video-container" id="videoContainer">
       <div class="video-placeholder" id="videoPlaceholder">No stream available for this event.</div>
@@ -153,8 +148,10 @@
       <div id="matches"></div>
     </div>
   </main>
+  </div>
 
   <script src="auth.js"></script>
+  <script src="topbar.js"></script>
   <script>
     const params = new URLSearchParams(window.location.search);
     const eventKey = params.get('event') || '';
@@ -427,17 +424,6 @@
     }
 
     function renderAuth() {
-      const user = auth.getUser();
-      document.getElementById('userBalance').style.display = user ? 'inline' : 'none';
-      document.getElementById('userName').style.display = user ? 'inline' : 'none';
-      document.getElementById('linkBets').style.display = user ? 'inline' : 'none';
-      document.getElementById('linkSignup').style.display = user ? 'none' : 'inline';
-      document.getElementById('linkLogin').style.display = user ? 'none' : 'inline';
-      document.getElementById('btnLogout').style.display = user ? 'inline' : 'none';
-      if (user) {
-        document.getElementById('userBalance').textContent = '$' + Number(user.balance).toFixed(2);
-        document.getElementById('userName').textContent = user.username;
-      }
       setupLeaderboardSort();
       loadLeaderboard();
     }

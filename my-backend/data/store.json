@@ -53,8 +53,8 @@
     "2026week0_f1m1": {
       "matchKey": "2026week0_f1m1",
       "question": "Will Red Alliance win?",
-      "resolved": null,
-      "winner": null
+      "resolved": true,
+      "winner": "red"
     }
   },
   "bets": [],

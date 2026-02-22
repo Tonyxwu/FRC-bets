@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <link rel="icon" href="/icon.webp" type="image/webp">
   <title>FRC Match List – Bet on matches</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -17,12 +18,12 @@
       --text: #e6e9f0;
     }
     * { box-sizing: border-box; }
-    body { font-family: 'Outfit', sans-serif; background: var(--bg); color: var(--text); margin: 0; min-height: 100vh; display: flex; flex-direction: column; }
-    .app-layout { display: flex; flex: 1; min-width: 0; }
+    body { font-family: 'Outfit', sans-serif; background: var(--bg); color: var(--text); margin: 0; min-height: 100vh; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+    .app-layout { display: flex; flex: 1; min-width: 0; min-height: 0; }
     .main-wrap { display: flex; flex: 1; min-width: 0; min-height: 0; }
     .leaderboard-sidebar {
       flex-shrink: 0; background: var(--card); border-right: 1px solid var(--border);
-      padding: 16px; overflow-y: auto;
+      padding: 16px; overflow-y: auto; min-height: 0;
     }
     .resizer {
       width: 6px; flex-shrink: 0; cursor: col-resize; background: var(--border);
@@ -42,13 +43,13 @@
     .leaderboard-list .team { color: var(--muted); font-variant-numeric: tabular-nums; min-width: 28px; text-align: right; }
     .leaderboard-list .balance { color: #22c55e; font-weight: 600; font-variant-numeric: tabular-nums; min-width: 36px; text-align: right; }
     .leaderboard-list .you { color: var(--blue); font-weight: 600; }
-    .main { flex: 1; min-width: 0; display: flex; overflow: hidden; }
+    .main { flex: 1; min-width: 0; min-height: 0; display: flex; overflow: hidden; }
     .events-column {
       flex-shrink: 0; padding: 20px 16px; border-right: 1px solid var(--border);
-      overflow-y: auto; background: var(--card);
+      overflow-y: auto; background: var(--card); min-height: 0;
     }
     .events-column h2 { font-size: 1rem; margin: 0 0 12px; color: var(--text); font-weight: 600; }
-    .event-detail-panel { flex: 1; min-width: 0; display: none; }
+    .event-detail-panel { flex: 1; min-width: 0; min-height: 0; overflow-y: auto; display: none; }
     .main-filler { flex: 1; min-width: 0; }
     .event-detail-panel .event-title { font-size: 1.25rem; font-weight: 700; margin: 0 0 16px; }
     .video-container {
@@ -181,21 +182,7 @@
   </style>
 </head>
 <body>
-  <header class="top-bar">
-    <div class="brand">
-      <h1 class="brand" style="margin: 0;"><a href="/frontend.html">FRC Match Markets</a></h1>
-      <p class="sub" style="margin: 2px 0 0;">Watch the stream and bet on matches. New users get $100.</p>
-    </div>
-    <nav class="top-bar-nav" id="authBar">
-      <a href="/frontend.html">Home</a>
-      <a href="/bets.html" id="linkBets" style="display: none;">My bets</a>
-      <a href="/auth.html" id="linkLogin">Sign in</a>
-      <span class="sim-clock" id="simClock" style="display: none;"><span class="label">Sim time</span><span id="simClockTime">—</span></span>
-      <span id="userBalance" class="balance" style="display: none;"></span>
-      <span id="userName" style="display: none;"></span>
-      <button type="button" id="btnLogout" style="display: none;">Log out</button>
-    </nav>
-  </header>
+  <div id="top-bar-placeholder" style="min-height: 52px; background: #161a22; border-bottom: 1px solid #2a3142;"></div>
   <div class="main-wrap">
   <aside class="leaderboard-sidebar" id="leaderboardSidebar">
     <h2>Leaderboard</h2>
@@ -247,6 +234,7 @@
   </div>
 
   <script src="auth.js"></script>
+  <script src="topbar.js"></script>
   <script>
     (function () {
       var STORAGE_KEY = 'frontendLeaderboardWidth';
@@ -639,7 +627,7 @@
         el.classList.toggle('closed', sec <= 0);
       });
     }
-    document.getElementById('btnLogout').onclick = () => { auth.logout(); renderAuth(); };
+    document.addEventListener('auth-state-changed', renderAuth);
 
     (async () => {
       await auth.fetchMe();
