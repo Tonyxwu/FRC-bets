@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Outfit:wght@400;600;700&display=swap" rel="stylesheet">
   <style>
-    :root { --bg: #0d0f14; --card: #161a22; --border: #2a3142; --blue: #3b82f6; --muted: #8b92a5; --text: #e6e9f0; --yes: #22c55e; --no: #ef4444; }
+    :root { --bg: #0d0f14; --card: #161a22; --border: #2a3142; --red: #e5484d; --blue: #3b82f6; --muted: #8b92a5; --text: #e6e9f0; --yes: #22c55e; --no: #ef4444; }
     * { box-sizing: border-box; }
     body { font-family: 'Outfit', sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 24px; min-height: 100vh; }
     .container { max-width: 640px; margin: 0 auto; }
@@ -16,9 +16,13 @@
     a:hover { text-decoration: underline; }
     .back { display: inline-block; margin-bottom: 20px; }
     .card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; margin-bottom: 10px; }
-    .card.won { background: rgba(34, 197, 94, 0.12); border-color: rgba(34, 197, 94, 0.5); }
+    .card.won { background: rgba(34, 197, 94, 0.15); border-color: rgba(34, 197, 94, 0.6); }
+    .card.red-won { background: rgba(229, 72, 77, 0.12); border-color: rgba(229, 72, 77, 0.5); }
+    .card.blue-won { background: rgba(59, 130, 246, 0.12); border-color: rgba(59, 130, 246, 0.5); }
+    .card.tie-won { background: rgba(139, 146, 165, 0.12); border-color: rgba(139, 146, 165, 0.4); }
     .card h3 { font-size: 0.95rem; margin: 0 0 8px; }
-    .card .earned { font-size: 0.9rem; font-weight: 600; color: var(--yes); margin-top: 8px; }
+    .card .earned { font-size: 0.95rem; font-weight: 700; color: var(--yes); margin-top: 8px; }
+    .card .lost { font-size: 0.9rem; font-weight: 600; color: var(--no); margin-top: 6px; }
     .card .meta { font-size: 0.85rem; color: var(--muted); }
     .card .position { font-family: 'JetBrains Mono', monospace; font-size: 0.9rem; margin-top: 6px; }
     .card .position .red { color: #e5484d; }
@@ -78,12 +82,22 @@
         data.positions.forEach(function (p) {
           const status = p.resolved !== null ? ' (Resolved: ' + (p.winner || 'tie') + ')' : '';
           const isWin = p.profit != null && p.profit > 0;
-          const cardClass = 'card' + (isWin ? ' won' : '');
+          const isLoss = p.profit != null && p.profit < 0;
+          const isTieResult = p.resolved !== null && p.winner === 'tie';
+          let cardClass = 'card';
+          if (isWin) cardClass += ' won';
+          else if (p.resolved !== null && p.winner) {
+            if (p.winner === 'red') cardClass += ' red-won';
+            else if (p.winner === 'blue') cardClass += ' blue-won';
+            else cardClass += ' tie-won';
+          }
           html += '<div class="' + cardClass + '">';
           html += '<h3>' + (p.question || p.marketId) + status + '</h3>';
           html += '<div class="meta">' + p.marketId + (p.totalRed != null && p.totalBlue != null ? ' · Pool: Red $' + p.totalRed.toFixed(2) + ' / Blue $' + p.totalBlue.toFixed(2) : '') + '</div>';
           html += '<div class="position"><span class="red">Red $' + (p.red || 0).toFixed(2) + '</span> · <span class="blue">Blue $' + (p.blue || 0).toFixed(2) + '</span></div>';
           if (isWin) html += '<div class="earned">You earned $' + Number(p.profit).toFixed(2) + '</div>';
+          else if (isLoss) html += '<div class="lost">You lost $' + Math.abs(Number(p.profit)).toFixed(2) + '</div>';
+          else if (isTieResult) html += '<div class="meta" style="margin-top:6px;">Tie — stake returned</div>';
           html += '<a href="/market.html?match=' + encodeURIComponent(p.marketId) + '">View market →</a>';
           html += '</div>';
         });

@@ -1,24 +1,6 @@
 {
-  "users": {
-    "1": {
-      "username": "tony",
-      "passwordHash": "ef797c8118f02dfb649607dd5d3f8c7623048c9c063d532cc95c5ed7a898a64f",
-      "balance": 69.99999999999999
-    },
-    "2": {
-      "username": "henry",
-      "passwordHash": "03ac674216f3e15c761ee1a5e255f067953623c8b388b4459e13f978d7c846f4",
-      "balance": 100,
-      "teamNumber": "192"
-    },
-    "3": {
-      "username": "johnny",
-      "passwordHash": "03ac674216f3e15c761ee1a5e255f067953623c8b388b4459e13f978d7c846f4",
-      "balance": 100,
-      "teamNumber": "192"
-    }
-  },
-  "nextUserId": 4,
+  "users": {},
+  "nextUserId": 1,
   "markets": {
     "2025nysu_f1m1": {
       "matchKey": "2025nysu_f1m1",
@@ -47,8 +29,8 @@
     "2026week0_qm1": {
       "matchKey": "2026week0_qm1",
       "question": "Will Red Alliance win?",
-      "resolved": true,
-      "winner": "blue"
+      "resolved": null,
+      "winner": null
     },
     "2026week0_f1m3": {
       "matchKey": "2026week0_f1m3",
@@ -59,106 +41,23 @@
     "2026week0_qm2": {
       "matchKey": "2026week0_qm2",
       "question": "Will Red Alliance win?",
-      "resolved": true,
-      "winner": "red"
+      "resolved": null,
+      "winner": null
     },
     "2026week0_qm3": {
       "matchKey": "2026week0_qm3",
       "question": "Will Red Alliance win?",
-      "resolved": true,
-      "winner": "red"
+      "resolved": null,
+      "winner": null
+    },
+    "2026week0_f1m1": {
+      "matchKey": "2026week0_f1m1",
+      "question": "Will Red Alliance win?",
+      "resolved": null,
+      "winner": null
     }
   },
-  "bets": [
-    {
-      "userId": "1",
-      "marketId": "2026week0_qm1",
-      "side": "red",
-      "amount": 10,
-      "timestamp": "2026-02-22T17:47:00.896Z"
-    },
-    {
-      "userId": "1",
-      "marketId": "2026week0_qm1",
-      "side": "red",
-      "amount": 10,
-      "timestamp": "2026-02-22T17:47:01.044Z"
-    },
-    {
-      "userId": "1",
-      "marketId": "2026week0_qm1",
-      "side": "red",
-      "amount": 10,
-      "timestamp": "2026-02-22T17:47:01.167Z"
-    },
-    {
-      "userId": "1",
-      "marketId": "2026week0_qm2",
-      "side": "red",
-      "amount": 10,
-      "timestamp": "2026-02-22T17:47:10.496Z"
-    },
-    {
-      "userId": "1",
-      "marketId": "2026week0_qm2",
-      "side": "red",
-      "amount": 10,
-      "timestamp": "2026-02-22T17:47:10.619Z"
-    },
-    {
-      "userId": "1",
-      "marketId": "2026week0_qm2",
-      "side": "red",
-      "amount": 10,
-      "timestamp": "2026-02-22T17:47:10.763Z"
-    },
-    {
-      "userId": "1",
-      "marketId": "2026week0_qm3",
-      "side": "red",
-      "amount": 10,
-      "timestamp": "2026-02-22T17:47:24.349Z"
-    },
-    {
-      "userId": "1",
-      "marketId": "2026week0_qm3",
-      "side": "red",
-      "amount": 10,
-      "timestamp": "2026-02-22T17:47:24.471Z"
-    },
-    {
-      "userId": "1",
-      "marketId": "2026week0_qm3",
-      "side": "red",
-      "amount": 10,
-      "timestamp": "2026-02-22T17:47:24.595Z"
-    },
-    {
-      "userId": "1",
-      "marketId": "2026week0_qm3",
-      "side": "blue",
-      "amount": 10,
-      "timestamp": "2026-02-22T17:47:31.182Z"
-    }
-  ],
-  "marketTotals": {
-    "2026week0_qm1": {
-      "totalRed": 30,
-      "totalBlue": 0
-    },
-    "2026week0_qm2": {
-      "totalRed": 30,
-      "totalBlue": 0
-    },
-    "2026week0_qm3": {
-      "totalRed": 30,
-      "totalBlue": 10
-    }
-  },
-  "sessions": {
-    "33b2267cb10e2f1598b4cf42dc21872ebe965ebd3a89f73b": "1",
-    "c70655d7fa5459e97d134127c56dbae9e5bbf24d68515a92": "2",
-    "3a46d5cb9b641e0cacc87ac8b3518e69990d57f97febee15": "3",
-    "679519b2b31d59122b03fcf197321a6b733cc1f92f8663e4": "3"
-  }
+  "bets": [],
+  "marketTotals": {},
+  "sessions": {}
 }

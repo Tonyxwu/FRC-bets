@@ -17,12 +17,18 @@
       --text: #e6e9f0;
     }
     * { box-sizing: border-box; }
-    body { font-family: 'Outfit', sans-serif; background: var(--bg); color: var(--text); margin: 0; min-height: 100vh; display: flex; }
+    body { font-family: 'Outfit', sans-serif; background: var(--bg); color: var(--text); margin: 0; min-height: 100vh; display: flex; flex-direction: column; }
     .app-layout { display: flex; flex: 1; min-width: 0; }
+    .main-wrap { display: flex; flex: 1; min-width: 0; min-height: 0; }
     .leaderboard-sidebar {
-      width: 220px; flex-shrink: 0; background: var(--card); border-right: 1px solid var(--border);
+      flex-shrink: 0; background: var(--card); border-right: 1px solid var(--border);
       padding: 16px; overflow-y: auto;
     }
+    .resizer {
+      width: 6px; flex-shrink: 0; cursor: col-resize; background: var(--border);
+      transition: background 0.15s;
+    }
+    .resizer:hover, .resizer.dragging { background: var(--blue); }
     .leaderboard-sidebar h2 { font-size: 0.95rem; margin: 0 0 10px; color: var(--muted); font-weight: 600; }
     .leaderboard-sidebar select {
       width: 100%; padding: 8px 10px; margin-bottom: 12px; border: 1px solid var(--border);
@@ -38,11 +44,12 @@
     .leaderboard-list .you { color: var(--blue); font-weight: 600; }
     .main { flex: 1; min-width: 0; display: flex; overflow: hidden; }
     .events-column {
-      width: 280px; flex-shrink: 0; padding: 20px 16px; border-right: 1px solid var(--border);
+      flex-shrink: 0; padding: 20px 16px; border-right: 1px solid var(--border);
       overflow-y: auto; background: var(--card);
     }
     .events-column h2 { font-size: 1rem; margin: 0 0 12px; color: var(--text); font-weight: 600; }
-    .event-detail-panel { flex: 1; min-width: 0; padding: 24px; overflow-y: auto; }
+    .event-detail-panel { flex: 1; min-width: 0; display: none; }
+    .main-filler { flex: 1; min-width: 0; }
     .event-detail-panel .event-title { font-size: 1.25rem; font-weight: 700; margin: 0 0 16px; }
     .video-container {
       position: relative; width: 100%; max-width: 640px; margin-bottom: 24px;
@@ -140,6 +147,15 @@
     .upcoming-item strong { font-size: 0.95rem; }
     .upcoming-item .meta { font-size: 0.8rem; color: var(--muted); margin-top: 4px; }
     .upcoming-item .key { font-family: 'JetBrains Mono', monospace; font-size: 0.8rem; color: var(--blue); }
+    .upcoming-item.recent { border-left: 3px solid var(--muted); }
+    .events-search {
+      width: 100%; padding: 8px 10px; margin-bottom: 12px;
+      border: 1px solid var(--border); border-radius: 6px;
+      background: var(--bg); color: var(--text); font-size: 0.85rem; font-family: inherit;
+    }
+    .events-search::placeholder { color: var(--muted); }
+    .events-section-title { font-size: 0.75rem; font-weight: 600; color: var(--muted); text-transform: uppercase; margin: 12px 0 6px; }
+    .events-section-title:first-of-type { margin-top: 0; }
     .select-event-prompt { color: var(--muted); font-size: 0.95rem; padding: 40px 20px; text-align: center; }
     .sim-clock {
       font-variant-numeric: tabular-nums; font-size: 0.85rem;
@@ -147,10 +163,41 @@
       border-radius: 6px; padding: 6px 10px; margin-right: 8px;
     }
     .sim-clock span.label { color: var(--muted); font-size: 0.75rem; margin-right: 6px; }
+    .top-bar {
+      width: 100%; flex-shrink: 0;
+      display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;
+      padding: 14px 20px; background: var(--card); border-bottom: 1px solid var(--border);
+    }
+    .top-bar .brand { margin: 0; }
+    .top-bar .brand a { color: var(--text); text-decoration: none; font-size: 1.25rem; font-weight: 700; }
+    .top-bar .brand a:hover { color: var(--blue); }
+    .top-bar .brand .sub { font-size: 0.85rem; margin: 2px 0 0; }
+    .top-bar-nav { display: flex; align-items: center; gap: 14px; font-size: 0.9rem; }
+    .top-bar-nav a { color: var(--blue); text-decoration: none; }
+    .top-bar-nav a:hover { text-decoration: underline; }
+    .top-bar-nav .balance { color: #22c55e; font-family: 'JetBrains Mono', monospace; font-weight: 600; }
+    .top-bar-nav button { background: transparent; border: 1px solid var(--border); color: var(--muted); padding: 6px 10px; border-radius: 6px; cursor: pointer; font-family: inherit; font-size: 0.9rem; }
+    .top-bar-nav button:hover { color: var(--text); }
   </style>
 </head>
 <body>
-  <aside class="leaderboard-sidebar">
+  <header class="top-bar">
+    <div class="brand">
+      <h1 class="brand" style="margin: 0;"><a href="/frontend.html">FRC Match Markets</a></h1>
+      <p class="sub" style="margin: 2px 0 0;">Watch the stream and bet on matches. New users get $100.</p>
+    </div>
+    <nav class="top-bar-nav" id="authBar">
+      <a href="/frontend.html">Home</a>
+      <a href="/bets.html" id="linkBets" style="display: none;">My bets</a>
+      <a href="/auth.html" id="linkLogin">Sign in</a>
+      <span class="sim-clock" id="simClock" style="display: none;"><span class="label">Sim time</span><span id="simClockTime">—</span></span>
+      <span id="userBalance" class="balance" style="display: none;"></span>
+      <span id="userName" style="display: none;"></span>
+      <button type="button" id="btnLogout" style="display: none;">Log out</button>
+    </nav>
+  </header>
+  <div class="main-wrap">
+  <aside class="leaderboard-sidebar" id="leaderboardSidebar">
     <h2>Leaderboard</h2>
     <select id="leaderboardSort">
       <option value="all">All</option>
@@ -158,31 +205,28 @@
     <p class="leaderboard-hint" id="leaderboardHint" style="display: none; font-size: 0.75rem; color: var(--muted); margin: 0 0 8px;"></p>
     <ul class="leaderboard-list" id="leaderboardList"></ul>
   </aside>
+  <div class="resizer" id="leaderboardResizer" title="Drag to resize"></div>
   <div class="app-layout">
   <main class="main">
-    <aside class="events-column">
+    <aside class="events-column" id="eventsColumn">
       <h2>Events</h2>
-      <p class="sub" style="margin-bottom: 10px; font-size: 0.8rem;">Click an event for stream and matches.</p>
-      <div id="upcomingEvents" class="upcoming-list">
+      <p class="sub" style="margin-bottom: 8px; font-size: 0.8rem;">Click an event for stream and matches.</p>
+      <input type="text" class="events-search" id="eventsSearch" placeholder="Search events (name, city, key)…" autocomplete="off">
+      <div id="eventsRecentSection" style="display: none;">
+        <div class="events-section-title" id="eventsRecentTitle">Recent</div>
+        <div id="eventsRecent" class="upcoming-list"></div>
+      </div>
+      <div id="eventsUpcomingSection" style="display: none;">
+        <div class="events-section-title" id="eventsUpcomingTitle">Upcoming</div>
+        <div id="upcomingEvents" class="upcoming-list"></div>
+      </div>
+      <div id="eventsLoading" class="upcoming-list">
         <span style="color: var(--muted);">Loading…</span>
       </div>
     </aside>
+    <div class="resizer" id="eventsResizer" title="Drag to resize events"></div>
+    <div class="main-filler"></div>
     <div class="event-detail-panel">
-      <div class="header" style="margin-bottom: 16px;">
-        <div>
-          <h1 style="margin: 0;">FRC match markets</h1>
-          <p class="sub" style="margin-bottom: 0;">Watch the stream and bet on matches. New users get $100.</p>
-        </div>
-        <div class="header-right" id="authBar">
-          <span class="sim-clock" id="simClock" style="display: none;"><span class="label">Sim time</span><span id="simClockTime">—</span></span>
-          <span id="userBalance" class="balance" style="display: none;"></span>
-          <span id="userName" style="display: none;"></span>
-          <a href="/bets.html" id="linkBets" style="display: none;">My bets</a>
-          <a href="/auth.html" id="linkSignup" style="display: none;">Sign up</a>
-          <a href="/auth.html" id="linkLogin" style="display: none;">Log in</a>
-          <button type="button" id="btnLogout" style="display: none;">Log out</button>
-        </div>
-      </div>
       <div id="eventDetailContent">
         <p class="select-event-prompt" id="selectEventPrompt">Select an event from the list to see the live stream and matches.</p>
         <div id="eventDetail" style="display: none;">
@@ -200,9 +244,77 @@
     </div>
   </main>
   </div>
+  </div>
 
   <script src="auth.js"></script>
   <script>
+    (function () {
+      var STORAGE_KEY = 'frontendLeaderboardWidth';
+      var MIN = 160, MAX = 480, DEFAULT = 220;
+      var sidebar = document.getElementById('leaderboardSidebar');
+      var resizer = document.getElementById('leaderboardResizer');
+      function getW() {
+        var w = localStorage.getItem(STORAGE_KEY);
+        if (w != null) { var n = parseInt(w, 10); if (!isNaN(n) && n >= MIN && n <= MAX) return n; }
+        return DEFAULT;
+      }
+      function setW(w) { localStorage.setItem(STORAGE_KEY, String(w)); }
+      function apply(w) { sidebar.style.width = w + 'px'; }
+      apply(getW());
+      resizer.addEventListener('mousedown', function (e) {
+        e.preventDefault();
+        resizer.classList.add('dragging');
+        document.body.style.userSelect = 'none';
+        var startX = e.clientX, startW = sidebar.offsetWidth;
+        function move(e2) {
+          var newW = Math.min(MAX, Math.max(MIN, startW + (e2.clientX - startX)));
+          apply(newW);
+          setW(newW);
+        }
+        function up() {
+          resizer.classList.remove('dragging');
+          document.body.style.userSelect = '';
+          document.removeEventListener('mousemove', move);
+          document.removeEventListener('mouseup', up);
+        }
+        document.addEventListener('mousemove', move);
+        document.addEventListener('mouseup', up);
+      });
+    })();
+    (function () {
+      var STORAGE_KEY = 'frontendEventsWidth';
+      var MIN = 200, MAX = 500, DEFAULT = 280;
+      var col = document.getElementById('eventsColumn');
+      var resizer = document.getElementById('eventsResizer');
+      function getW() {
+        var w = localStorage.getItem(STORAGE_KEY);
+        if (w != null) { var n = parseInt(w, 10); if (!isNaN(n) && n >= MIN && n <= MAX) return n; }
+        return DEFAULT;
+      }
+      function setW(w) { localStorage.setItem(STORAGE_KEY, String(w)); }
+      function apply(w) { col.style.width = w + 'px'; }
+      apply(getW());
+      resizer.addEventListener('mousedown', function (e) {
+        e.preventDefault();
+        resizer.classList.add('dragging');
+        document.body.style.userSelect = 'none';
+        var startX = e.clientX, startW = col.offsetWidth;
+        function move(e2) {
+          var newW = Math.min(MAX, Math.max(MIN, startW + (e2.clientX - startX)));
+          apply(newW);
+          setW(newW);
+        }
+        function up() {
+          resizer.classList.remove('dragging');
+          document.body.style.userSelect = '';
+          document.removeEventListener('mousemove', move);
+          document.removeEventListener('mouseup', up);
+        }
+        document.addEventListener('mousemove', move);
+        document.addEventListener('mouseup', up);
+      });
+    })();
+
     const leaderboardList = document.getElementById('leaderboardList');
     const leaderboardSort = document.getElementById('leaderboardSort');
 
@@ -349,27 +461,41 @@
             })
           : matches;
         const timeVal = (match) => (match.time != null && match.time > 0) ? String(match.time) : '';
+        function formatCompLevel(cl) {
+          if (!cl) return '';
+          var s = (cl + '').toLowerCase();
+          if (s === 'qm') return 'Qualifier Match';
+          if (s === 'qf') return 'Quarter Finals';
+          if (s === 'sf' || s === 'sm') return 'Semi Finals';
+          if (s === 'f') return 'Finals';
+          return (cl + '').toUpperCase();
+        }
+        function teamNumbers(keys) {
+          if (!keys || !keys.length) return '—';
+          return keys.map(function (k) { return (k + '').replace(/^frc/i, ''); }).join(', ');
+        }
         sorted.forEach(match => {
           const red = match.alliances?.red;
           const blue = match.alliances?.blue;
           const redScore = red?.score;
           const blueScore = blue?.score;
-          const isFinished = redScore != null && blueScore != null;
+          const marketClosed = !!match.marketResolved;
+          const isFinished = (redScore != null && blueScore != null) || marketClosed;
           const statusClass = isFinished ? 'finished' : 'open';
-          const statusLabel = isFinished ? 'Final' : 'Open for bets';
-          const scoreLine = isFinished
+          const statusLabel = isFinished ? (marketClosed && redScore == null ? 'Closed' : 'Final') : 'Open for bets';
+          const scoreLine = isFinished && redScore != null && blueScore != null
             ? '<div class="match-score"><span class="red">' + redScore + '</span> – <span class="blue">' + blueScore + '</span></div>'
-            : '';
+            : (marketClosed ? '<div class="match-score" style="color: var(--muted);">Market closed</div>' : '');
           const div = document.createElement('div');
           div.className = 'match';
           div.innerHTML =
             '<div class="match-info">' +
-            '<strong>' + (match.comp_level || '').toUpperCase() + ' ' + match.match_number + '</strong>' +
+            '<strong>' + formatCompLevel(match.comp_level) + ' ' + match.match_number + '</strong>' +
             '<span class="match-status ' + statusClass + '">' + statusLabel + '</span>' +
             scoreLine +
             '<div class="countdown" data-time="' + timeVal(match) + '">—</div>' +
-            '<span class="red">Red:</span> ' + (red && red.team_keys ? red.team_keys.join(', ') : '—') + '<br>' +
-            '<span class="blue">Blue:</span> ' + (blue && blue.team_keys ? blue.team_keys.join(', ') : '—') +
+            '<span class="red">Red:</span> ' + teamNumbers(red && red.team_keys) + '<br>' +
+            '<span class="blue">Blue:</span> ' + teamNumbers(blue && blue.team_keys) +
             '</div>' +
             '<div class="match-actions">' +
             '<a class="btn-view" href="/match.html?match=' + encodeURIComponent(match.key) + '">View</a>' +
@@ -385,45 +511,99 @@
       }
     }
 
-    async function loadUpcoming() {
-      const el = document.getElementById('upcomingEvents');
-      try {
-        const res = await fetch('/api/events/upcoming');
-        if (!res.ok) throw new Error('Failed');
-        const events = await res.json();
-        if (events.length === 0) {
-          el.innerHTML = '<span style="color: var(--muted);">No events in the next 7 days.</span>';
-          return;
-        }
-        el.innerHTML = events.map(function (e) {
-          const loc = [e.city, e.state_prov].filter(Boolean).join(', ');
-          const dates = e.start_date === e.end_date ? e.start_date : e.start_date + ' – ' + e.end_date;
-          const bettable = e.has_open_matches === true;
-          const cls = 'upcoming-item' + (bettable ? ' bettable' : '');
-          const badge = bettable ? '<span class="bet-badge">Bet open</span>' : '';
-          return '<a class="' + cls + '" href="#" data-key="' + (e.key || '') + '">' +
-            '<strong>' + (e.name || e.short_name || e.key) + badge + '</strong>' +
-            '<div class="meta">' + (loc ? loc + ' · ' : '') + dates + ' <span class="key">' + (e.key || '') + '</span></div>' +
-            '</a>';
-        }).join('');
-        el.querySelectorAll('.upcoming-item').forEach(function (a) {
-          a.onclick = function (ev) {
-            ev.preventDefault();
-            var k = a.getAttribute('data-key');
-            if (k) selectEvent(k);
-          };
-        });
-      } catch (_) {
-        el.innerHTML = '<span style="color: var(--muted);">Could not load events.</span>';
+    let eventsData = { recent: [], upcoming: [] };
+
+    function eventMatchesSearch(e, q) {
+      if (!q || !q.trim()) return true;
+      const s = q.trim().toLowerCase();
+      const name = (e.name || '').toLowerCase();
+      const shortName = (e.short_name || '').toLowerCase();
+      const key = (e.key || '').toLowerCase();
+      const city = (e.city || '').toLowerCase();
+      const state = (e.state_prov || '').toLowerCase();
+      return name.indexOf(s) !== -1 || shortName.indexOf(s) !== -1 || key.indexOf(s) !== -1 ||
+        city.indexOf(s) !== -1 || state.indexOf(s) !== -1;
+    }
+
+    function renderEventItem(e, isRecent) {
+      const key = e.key || '';
+      const loc = [e.city, e.state_prov].filter(Boolean).join(', ');
+      const dates = e.start_date === e.end_date ? e.start_date : (e.start_date || '') + (e.end_date ? ' – ' + e.end_date : '');
+      const bettable = e.has_open_matches === true;
+      const cls = 'upcoming-item' + (bettable ? ' bettable' : '') + (isRecent ? ' recent' : '');
+      const badge = bettable ? '<span class="bet-badge">Bet open</span>' : '';
+      return '<a class="' + cls + '" href="/event.html?event=' + encodeURIComponent(key) + '" data-key="' + key + '" data-name="' + (e.name || '').replace(/"/g, '&quot;') + '" data-search="' + [e.name, e.short_name, e.key, e.city, e.state_prov].filter(Boolean).join(' ').toLowerCase().replace(/"/g, '') + '">' +
+        '<strong>' + (e.name || e.short_name || e.key) + badge + '</strong>' +
+        '<div class="meta">' + (loc ? loc + ' · ' : '') + dates + ' <span class="key">' + (e.key || '') + '</span></div>' +
+        '</a>';
+    }
+
+    function renderEvents(filter) {
+      const q = (filter || '').trim().toLowerCase();
+      const recentEl = document.getElementById('eventsRecent');
+      const upcomingEl = document.getElementById('upcomingEvents');
+      const recentSection = document.getElementById('eventsRecentSection');
+      const upcomingSection = document.getElementById('eventsUpcomingSection');
+      const loadingEl = document.getElementById('eventsLoading');
+      if (!recentEl || !upcomingEl) return;
+      loadingEl.style.display = 'none';
+      const recentFiltered = eventsData.recent.filter(function (e) { return eventMatchesSearch(e, q); });
+      const upcomingFiltered = eventsData.upcoming.filter(function (e) { return eventMatchesSearch(e, q); });
+      if (eventsData.recent.length > 0) {
+        recentSection.style.display = 'block';
+        recentEl.innerHTML = recentFiltered.length === 0
+          ? '<span style="color: var(--muted); font-size: 0.85rem;">No recent events match.</span>'
+          : recentFiltered.map(function (e) { return renderEventItem(e, true); }).join('');
+      } else {
+        recentSection.style.display = 'none';
+      }
+      if (eventsData.upcoming.length > 0) {
+        upcomingSection.style.display = 'block';
+        upcomingEl.innerHTML = upcomingFiltered.length === 0
+          ? '<span style="color: var(--muted); font-size: 0.85rem;">No upcoming events match.</span>'
+          : upcomingFiltered.map(function (e) { return renderEventItem(e, false); }).join('');
+      } else {
+        upcomingSection.style.display = 'block';
+        upcomingEl.innerHTML = '<span style="color: var(--muted);">No events in the next 7 days.</span>';
       }
     }
+
+    async function loadUpcoming() {
+      const loadingEl = document.getElementById('eventsLoading');
+      try {
+        const [recentRes, upcomingRes] = await Promise.all([
+          fetch('/api/events/recent?limit=2'),
+          fetch('/api/events/upcoming'),
+        ]);
+        eventsData.recent = recentRes.ok ? await recentRes.json() : [];
+        eventsData.upcoming = upcomingRes.ok ? await upcomingRes.json() : [];
+        if (eventsData.recent.length === 0 && eventsData.upcoming.length === 0) {
+          loadingEl.style.display = 'none';
+          document.getElementById('eventsRecentSection').style.display = 'none';
+          document.getElementById('eventsUpcomingSection').style.display = 'block';
+          document.getElementById('upcomingEvents').innerHTML = '<span style="color: var(--muted);">No events in the next 7 days.</span>';
+          return;
+        }
+        renderEvents(document.getElementById('eventsSearch').value);
+      } catch (_) {
+        loadingEl.innerHTML = '<span style="color: var(--muted);">Could not load events.</span>';
+        loadingEl.style.display = 'block';
+      }
+    }
+
+    (function () {
+      const searchEl = document.getElementById('eventsSearch');
+      if (searchEl) {
+        searchEl.addEventListener('input', function () { renderEvents(this.value); });
+        searchEl.addEventListener('keydown', function (e) { if (e.key === 'Escape') { this.value = ''; renderEvents(''); this.blur(); } });
+      }
+    })();
 
     function renderAuth() {
       const user = auth.getUser();
       document.getElementById('userBalance').style.display = user ? 'inline' : 'none';
       document.getElementById('userName').style.display = user ? 'inline' : 'none';
       document.getElementById('linkBets').style.display = user ? 'inline' : 'none';
-      document.getElementById('linkSignup').style.display = user ? 'none' : 'inline';
       document.getElementById('linkLogin').style.display = user ? 'none' : 'inline';
       document.getElementById('btnLogout').style.display = user ? 'inline' : 'none';
       if (user) {

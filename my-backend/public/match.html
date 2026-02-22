@@ -25,7 +25,7 @@
 </head>
 <body>
   <div class="container">
-    <a href="/frontend.html">← Back to matches</a>
+    <a href="#" id="backLink">← Back to matches</a>
     <h1 id="title">Loading...</h1>
     <div id="content" class="card"></div>
     <a class="btn" href="#" id="tradeLink">Trade on this match</a>
@@ -33,14 +33,41 @@
   <script>
     const params = new URLSearchParams(window.location.search);
     const matchKey = params.get('match') || window.location.pathname.split('/').filter(Boolean).pop();
-    if (matchKey) document.getElementById('tradeLink').href = '/market.html?match=' + encodeURIComponent(matchKey);
+    const fromEvent = params.get('fromEvent');
+    const backLink = document.getElementById('backLink');
+    if (fromEvent) {
+      backLink.href = '/event.html?event=' + encodeURIComponent(fromEvent);
+      backLink.textContent = '← Back to event';
+    } else {
+      backLink.href = '/frontend.html';
+      backLink.textContent = '← Back to matches';
+    }
+    const tradeLink = document.getElementById('tradeLink');
+    if (matchKey) {
+      let href = '/market.html?match=' + encodeURIComponent(matchKey);
+      if (fromEvent) href += '&fromEvent=' + encodeURIComponent(fromEvent);
+      tradeLink.href = href;
+    }
 
+    function formatCompLevel(cl) {
+      if (!cl) return '';
+      const s = (cl + '').toLowerCase();
+      if (s === 'qm') return 'Qualifier Match';
+      if (s === 'qf') return 'Quarter Finals';
+      if (s === 'sf' || s === 'sm') return 'Semi Finals';
+      if (s === 'f') return 'Finals';
+      return (cl + '').toUpperCase();
+    }
+    function teamNumbers(keys) {
+      if (!keys || !keys.length) return '—';
+      return keys.map(k => (k + '').replace(/^frc/i, '')).join(', ');
+    }
     async function loadMatch() {
       if (!matchKey) { document.getElementById('title').textContent = 'No match'; return; }
       const res = await fetch(`/api/match/${matchKey}`);
       if (!res.ok) { document.getElementById('title').textContent = 'Match not found'; return; }
       const match = await res.json();
-      document.getElementById('title').textContent = `${(match.comp_level || '').toUpperCase()} ${match.match_number}`;
+      document.getElementById('title').textContent = `${formatCompLevel(match.comp_level)} ${match.match_number}`;
       const red = match.alliances?.red || {};
       const blue = match.alliances?.blue || {};
       const redScore = red.score;
@@ -48,12 +75,12 @@
       document.getElementById('content').innerHTML = `
         <div class="alliance red">
           <h3>Red Alliance</h3>
-          <p>Teams: ${(red.team_keys || []).join(', ') || '—'}</p>
+          <p>Teams: ${teamNumbers(red.team_keys)}</p>
           <p class="score">Score: ${redScore != null ? redScore : '—'}</p>
         </div>
         <div class="alliance blue">
           <h3>Blue Alliance</h3>
-          <p>Teams: ${(blue.team_keys || []).join(', ') || '—'}</p>
+          <p>Teams: ${teamNumbers(blue.team_keys)}</p>
           <p class="score">Score: ${blueScore != null ? blueScore : '—'}</p>
         </div>
       `;

@@ -119,11 +119,27 @@
       border-radius: 6px; padding: 6px 10px; margin-bottom: 10px; display: inline-block;
     }
     .sim-clock span.label { color: var(--muted); font-size: 0.75rem; margin-right: 6px; }
+    .video-wrap {
+      width: 100%; max-width: 640px; margin: 0 auto 24px;
+      border-radius: 12px; overflow: hidden; border: 1px solid var(--border);
+      background: #000;
+    }
+    .video-wrap .ratio { position: relative; padding-bottom: 56.25%; height: 0; }
+    .video-wrap iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none; }
+    .video-wrap .placeholder { padding: 24px; text-align: center; color: var(--muted); font-size: 0.9rem; }
   </style>
 </head>
 <body>
   <div class="container">
-    <a class="back" href="/frontend.html">← Back to matches</a>
+    <a class="back" href="#" id="backLink">← Back to matches</a>
+    <div class="video-wrap" id="videoWrap" style="display: none;">
+      <div class="ratio">
+        <iframe id="eventVideoEmbed" title="Event stream"></iframe>
+      </div>
+    </div>
+    <div class="video-wrap" id="videoPlaceholder" style="display: none;">
+      <div class="placeholder">Loading stream…</div>
+    </div>
     <h1 id="title">Loading...</h1>
     <p class="sub" id="sub"></p>
     <p class="sim-clock" id="simClock" style="display: none;"><span class="label">Sim time</span><span id="simClockTime">—</span></p>
@@ -163,11 +179,63 @@
 
   <script src="auth.js"></script>
   <script>
-    const matchKey = new URLSearchParams(window.location.search).get('match') || window.location.pathname.replace(/\/market\.html\/?/, '').replace(/^\//, '');
+    const urlParams = new URLSearchParams(window.location.search);
+    const matchKey = urlParams.get('match') || window.location.pathname.replace(/\/market\.html\/?/, '').replace(/^\//, '');
+    const fromEvent = urlParams.get('fromEvent');
+    (function () {
+      const backLink = document.getElementById('backLink');
+      if (fromEvent) {
+        backLink.href = '/event.html?event=' + encodeURIComponent(fromEvent);
+        backLink.textContent = '← Back to event';
+      } else {
+        backLink.href = '/frontend.html';
+        backLink.textContent = '← Back to matches';
+      }
+    })();
+    function webcastToEmbedUrl(w) {
+      if (!w || !w.channel) return null;
+      const type = (w.type || '').toLowerCase();
+      const ch = w.channel.trim();
+      if (type === 'youtube') {
+        if (/^[a-zA-Z0-9_-]{11}$/.test(ch)) return 'https://www.youtube.com/embed/' + ch;
+        return 'https://www.youtube.com/embed/live_stream?channel=' + encodeURIComponent(ch);
+      }
+      if (type === 'twitch') return 'https://player.twitch.tv/?channel=' + encodeURIComponent(ch);
+      if (type === 'iframe' && /^https?:\/\//i.test(ch)) return ch;
+      return null;
+    }
+    async function loadEventVideo(eventKey) {
+      const wrap = document.getElementById('videoWrap');
+      const placeholder = document.getElementById('videoPlaceholder');
+      const iframe = document.getElementById('eventVideoEmbed');
+      if (!eventKey || !wrap || !placeholder || !iframe) return;
+      try {
+        placeholder.style.display = 'block';
+        const res = await fetch('/api/event/' + encodeURIComponent(eventKey));
+        if (!res.ok) { placeholder.style.display = 'none'; return; }
+        const event = await res.json();
+        let embedUrl = null;
+        if (event.webcasts && event.webcasts.length > 0) {
+          for (let i = 0; i < event.webcasts.length; i++) {
+            embedUrl = webcastToEmbedUrl(event.webcasts[i]);
+            if (embedUrl) break;
+          }
+        }
+        placeholder.style.display = 'none';
+        if (embedUrl) {
+          iframe.src = embedUrl;
+          wrap.style.display = 'block';
+        }
+      } catch (_) {
+        placeholder.style.display = 'none';
+      }
+    }
     if (!matchKey) {
       document.getElementById('title').textContent = 'No match selected';
       document.getElementById('tradeArea').innerHTML = '<p><a href="/frontend.html">Pick a match</a> to trade.</p>';
     } else {
+      const eventKeyForVideo = fromEvent || (matchKey && matchKey.split('_')[0]);
+      if (eventKeyForVideo) loadEventVideo(eventKeyForVideo);
       let market = null;
       let match = null;
       let simSync = null;
@@ -227,18 +295,31 @@
         countdownEl.textContent = sec > 0 ? ('Market closes in ' + formatCountdown(sec)) : 'Market closed';
         countdownEl.classList.toggle('closed', sec <= 0);
       }
+      function formatCompLevel(cl) {
+        if (!cl) return '';
+        const s = (cl + '').toLowerCase();
+        if (s === 'qm') return 'Qualifier Match';
+        if (s === 'qf') return 'Quarter Finals';
+        if (s === 'sf' || s === 'sm') return 'Semi Finals';
+        if (s === 'f') return 'Finals';
+        return (cl + '').toUpperCase();
+      }
+      function teamNumbers(keys) {
+        if (!keys || !keys.length) return '—';
+        return keys.map(k => (k + '').replace(/^frc/i, '')).join(', ');
+      }
       async function loadMatch() {
         const res = await fetch(`/api/match/${matchKey}`);
         if (!res.ok) return;
         match = await res.json();
-        document.getElementById('title').textContent = `${(match.comp_level || '').toUpperCase()} ${match.match_number || matchKey}`;
+        document.getElementById('title').textContent = `${formatCompLevel(match.comp_level)} ${match.match_number || matchKey}`;
         document.getElementById('sub').textContent = matchKey;
         const red = match.alliances?.red;
         const blue = match.alliances?.blue;
         if (red && blue) {
           document.getElementById('alliances').innerHTML = `
-            <span class="red">Red:</span> ${red.team_keys?.join(', ') || '—'} ·
-            <span class="blue">Blue:</span> ${blue.team_keys?.join(', ') || '—'}
+            <span class="red">Red:</span> ${teamNumbers(red.team_keys)} ·
+            <span class="blue">Blue:</span> ${teamNumbers(blue.team_keys)}
           `;
         }
         updateMarketCountdown();

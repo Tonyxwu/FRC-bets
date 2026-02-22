@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Event – FRC Match Markets</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Outfit:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0d0f14;
+      --card: #161a22;
+      --border: #2a3142;
+      --red: #e5484d;
+      --blue: #3b82f6;
+      --muted: #8b92a5;
+      --text: #e6e9f0;
+    }
+    * { box-sizing: border-box; }
+    body { font-family: 'Outfit', sans-serif; background: var(--bg); color: var(--text); margin: 0; min-height: 100vh; display: flex; }
+    .leaderboard-sidebar {
+      flex-shrink: 0; background: var(--card); border-right: 1px solid var(--border);
+      padding: 16px; overflow-y: auto;
+    }
+    .leaderboard-sidebar h2 { font-size: 0.95rem; margin: 0 0 10px; color: var(--muted); font-weight: 600; }
+    .leaderboard-sidebar select {
+      width: 100%; padding: 8px 10px; margin-bottom: 12px; border: 1px solid var(--border);
+      border-radius: 6px; background: var(--bg); color: var(--text); font-size: 0.85rem; font-family: inherit; cursor: pointer;
+    }
+    .leaderboard-list { list-style: none; margin: 0; padding: 0; font-size: 0.85rem; }
+    .leaderboard-list li { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--border); gap: 6px; font-size: 0.8rem; }
+    .leaderboard-list li:last-child { border-bottom: none; }
+    .leaderboard-list .rank { color: var(--muted); font-variant-numeric: tabular-nums; min-width: 18px; }
+    .leaderboard-list .name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .leaderboard-list .team { color: var(--muted); font-variant-numeric: tabular-nums; min-width: 28px; text-align: right; }
+    .leaderboard-list .balance { color: #22c55e; font-weight: 600; font-variant-numeric: tabular-nums; min-width: 36px; text-align: right; }
+    .leaderboard-list .you { color: var(--blue); font-weight: 600; }
+    .resizer {
+      width: 6px; flex-shrink: 0; cursor: col-resize; background: var(--border);
+      transition: background 0.15s;
+    }
+    .resizer:hover, .resizer.dragging { background: var(--blue); }
+    .event-main { flex: 1; min-width: 0; padding: 24px; overflow-y: auto; }
+    .event-main .event-title { font-size: 1.25rem; font-weight: 700; margin: 0 0 16px; }
+    .video-container {
+      position: relative; width: 100%; max-width: 640px; margin-bottom: 24px;
+      border-radius: 12px; overflow: hidden; border: 1px solid var(--border);
+      background: #000;
+    }
+    .video-container .ratio { padding-bottom: 56.25%; height: 0; }
+    .video-container iframe {
+      position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none;
+    }
+    .video-placeholder { padding: 40px 20px; text-align: center; color: var(--muted); font-size: 0.9rem; }
+    .matches-section { margin-top: 16px; }
+    .matches-section h3 { font-size: 0.95rem; margin: 0 0 10px; color: var(--muted); }
+    .match {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 14px 16px;
+      margin-bottom: 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    .match:hover { border-color: #3a4255; }
+    .match-info { flex: 1; min-width: 200px; }
+    .match-info strong { font-size: 0.95rem; }
+    .match-info .red { color: var(--red); }
+    .match-info .blue { color: var(--blue); }
+    .match-status {
+      display: inline-block;
+      font-size: 0.7rem;
+      font-weight: 600;
+      padding: 3px 8px;
+      border-radius: 6px;
+      margin-left: 8px;
+      vertical-align: middle;
+    }
+    .match-status.finished { background: rgba(139, 146, 165, 0.25); color: var(--muted); }
+    .match-status.open { background: rgba(34, 197, 94, 0.2); color: #22c55e; }
+    .match-score { font-size: 0.85rem; color: var(--muted); margin-top: 4px; }
+    .match-chances { display: flex; gap: 10px; margin-top: 6px; font-size: 0.8rem; font-variant-numeric: tabular-nums; }
+    .match-chances .chance { padding: 4px 8px; border-radius: 6px; font-weight: 600; }
+    .match-chances .chance.red { background: rgba(229,72,77,0.2); color: var(--red); }
+    .match-chances .chance.blue { background: rgba(59,130,246,0.2); color: var(--blue); }
+    .countdown { font-size: 0.8rem; color: var(--muted); margin-top: 4px; font-variant-numeric: tabular-nums; }
+    .countdown.closed { color: #ef4444; }
+    .match-actions { display: flex; gap: 8px; }
+    .match-actions a {
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      text-decoration: none;
+      font-family: 'Outfit', sans-serif;
+    }
+    .btn-view { background: var(--border); color: var(--text); }
+    .btn-view:hover { background: #3a4255; }
+    .btn-trade { background: #22c55e; color: #0d0f14; }
+    .btn-trade:hover { filter: brightness(1.1); }
+    .header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 20px; }
+    .header-right { display: flex; align-items: center; gap: 12px; font-size: 0.9rem; }
+    .header-right .balance { color: #22c55e; font-family: 'JetBrains Mono', monospace; font-weight: 600; }
+    .header-right a { color: var(--blue); }
+    .header-right button { background: transparent; border: 1px solid var(--border); color: var(--muted); padding: 6px 10px; border-radius: 6px; cursor: pointer; font-family: inherit; }
+    .header-right button:hover { color: var(--text); }
+    .back-link { display: inline-block; margin-bottom: 16px; color: var(--blue); text-decoration: none; }
+    .back-link:hover { text-decoration: underline; }
+    .sim-clock {
+      font-variant-numeric: tabular-nums; font-size: 0.85rem;
+      color: #f59e0b; background: rgba(245,158,11,0.15); border: 1px solid rgba(245,158,11,0.4);
+      border-radius: 6px; padding: 6px 10px; margin-right: 8px;
+    }
+    .sim-clock span.label { color: var(--muted); font-size: 0.75rem; margin-right: 6px; }
+  </style>
+</head>
+<body>
+  <aside class="leaderboard-sidebar" id="leaderboardSidebar">
+    <h2>Leaderboard</h2>
+    <select id="leaderboardSort">
+      <option value="all">All</option>
+    </select>
+    <p class="leaderboard-hint" id="leaderboardHint" style="display: none; font-size: 0.75rem; color: var(--muted); margin: 0 0 8px;"></p>
+    <ul class="leaderboard-list" id="leaderboardList"></ul>
+  </aside>
+  <div class="resizer" id="resizer" title="Drag to resize"></div>
+  <main class="event-main">
+    <div class="header">
+      <div>
+        <a class="back-link" href="/frontend.html">← Back to events</a>
+        <h1 class="event-title" id="eventTitle">Loading…</h1>
+      </div>
+      <div class="header-right" id="authBar">
+        <span class="sim-clock" id="simClock" style="display: none;"><span class="label">Sim time</span><span id="simClockTime">—</span></span>
+        <span id="userBalance" class="balance" style="display: none;"></span>
+        <span id="userName" style="display: none;"></span>
+        <a href="/bets.html" id="linkBets" style="display: none;">My bets</a>
+        <a href="/auth.html" id="linkSignup" style="display: none;">Sign up</a>
+        <a href="/auth.html" id="linkLogin" style="display: none;">Log in</a>
+        <button type="button" id="btnLogout" style="display: none;">Log out</button>
+      </div>
+    </div>
+    <div class="video-container" id="videoContainer">
+      <div class="video-placeholder" id="videoPlaceholder">No stream available for this event.</div>
+      <div class="ratio" id="videoEmbedWrap" style="display: none;"><iframe id="videoEmbed" title="Event stream"></iframe></div>
+    </div>
+    <div class="matches-section">
+      <h3>Matches</h3>
+      <div id="matches"></div>
+    </div>
+  </main>
+
+  <script src="auth.js"></script>
+  <script>
+    const params = new URLSearchParams(window.location.search);
+    const eventKey = params.get('event') || '';
+    const leaderboardSidebar = document.getElementById('leaderboardSidebar');
+    const resizerEl = document.getElementById('resizer');
+    const STORAGE_KEY = 'eventLeaderboardWidth';
+    const MIN_WIDTH = 160;
+    const MAX_WIDTH = 480;
+    const DEFAULT_WIDTH = 220;
+
+    function getStoredWidth() {
+      const w = localStorage.getItem(STORAGE_KEY);
+      if (w != null) { const n = parseInt(w, 10); if (!isNaN(n) && n >= MIN_WIDTH && n <= MAX_WIDTH) return n; }
+      return DEFAULT_WIDTH;
+    }
+    function setStoredWidth(w) {
+      localStorage.setItem(STORAGE_KEY, String(w));
+    }
+    function applyWidth(w) {
+      leaderboardSidebar.style.width = w + 'px';
+    }
+    applyWidth(getStoredWidth());
+
+    resizerEl.addEventListener('mousedown', function (e) {
+      e.preventDefault();
+      resizerEl.classList.add('dragging');
+      document.body.style.userSelect = 'none';
+      const startX = e.clientX;
+      const startW = leaderboardSidebar.offsetWidth;
+      function move(e2) {
+        const dx = e2.clientX - startX;
+        const newW = Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, startW + dx));
+        applyWidth(newW);
+        setStoredWidth(newW);
+      }
+      function up() {
+        resizerEl.classList.remove('dragging');
+        document.body.style.userSelect = '';
+        document.removeEventListener('mousemove', move);
+        document.removeEventListener('mouseup', up);
+      }
+      document.addEventListener('mousemove', move);
+      document.addEventListener('mouseup', up);
+    });
+
+    const leaderboardList = document.getElementById('leaderboardList');
+    const leaderboardSort = document.getElementById('leaderboardSort');
+    async function loadLeaderboard() {
+      const user = auth.getUser();
+      const teamOpt = leaderboardSort.value;
+      const url = teamOpt === 'team' && user && user.teamNumber ? '/api/leaderboard?team=' + encodeURIComponent(user.teamNumber) : '/api/leaderboard';
+      try {
+        const res = await fetch(url);
+        if (!res.ok) { leaderboardList.innerHTML = '<li style="color: var(--muted);">Could not load</li>'; return; }
+        const data = await res.json();
+        const list = data.list || [];
+        leaderboardList.innerHTML = list.length === 0
+          ? '<li style="color: var(--muted);">No one yet</li>'
+          : list.map(function (row) {
+              const isYou = user && String(user.id) === String(row.id);
+              const team = row.teamNumber != null && row.teamNumber !== '' ? row.teamNumber : '—';
+              return '<li>' +
+                '<span class="rank">#' + row.rank + '</span>' +
+                '<span class="name' + (isYou ? ' you' : '') + '">' + (row.username || '—') + (isYou ? ' (you)' : '') + '</span>' +
+                '<span class="team">' + team + '</span>' +
+                '<span class="balance">$' + Number(row.balance).toFixed(0) + '</span>' +
+                '</li>';
+            }).join('');
+      } catch (_) {
+        leaderboardList.innerHTML = '<li style="color: var(--muted);">Could not load</li>';
+      }
+    }
+    function setupLeaderboardSort() {
+      const user = auth.getUser();
+      const opt = document.createElement('option');
+      opt.value = 'team';
+      opt.textContent = 'My team';
+      if (user && user.teamNumber) leaderboardSort.appendChild(opt);
+      leaderboardSort.addEventListener('change', loadLeaderboard);
+    }
+
+    let simSync = null;
+    async function fetchSimTime() {
+      try {
+        const res = await fetch('/api/sim/time');
+        const data = await res.json();
+        if (data.enabled && data.virtualUnix != null && data.speedFactor != null) {
+          simSync = { virtualUnix: data.virtualUnix, realUnixMs: Date.now(), speedFactor: data.speedFactor };
+          document.getElementById('simClock').style.display = 'inline-block';
+          return true;
+        }
+      } catch (_) {}
+      simSync = null;
+      document.getElementById('simClock').style.display = 'none';
+      return false;
+    }
+    function getNowUnix() {
+      if (!simSync) return Math.floor(Date.now() / 1000);
+      const realElapsedSec = (Date.now() - simSync.realUnixMs) / 1000;
+      return Math.floor(simSync.virtualUnix + realElapsedSec * simSync.speedFactor);
+    }
+    function formatSimTime(unix) {
+      const d = new Date(unix * 1000);
+      return d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }) +
+        ' ' + d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
+    }
+    function webcastToEmbedUrl(w) {
+      if (!w || !w.channel) return null;
+      var type = (w.type || '').toLowerCase();
+      var ch = w.channel.trim();
+      if (type === 'youtube') {
+        if (/^[a-zA-Z0-9_-]{11}$/.test(ch)) return 'https://www.youtube.com/embed/' + ch;
+        return 'https://www.youtube.com/embed/live_stream?channel=' + encodeURIComponent(ch);
+      }
+      if (type === 'twitch') return 'https://player.twitch.tv/?channel=' + encodeURIComponent(ch);
+      if (type === 'iframe' && /^https?:\/\//i.test(ch)) return ch;
+      return null;
+    }
+    function formatCountdown(seconds) {
+      if (seconds == null || seconds < 0) return '—';
+      if (seconds <= 0) return 'Closed';
+      const d = Math.floor(seconds / 86400);
+      const h = Math.floor((seconds % 86400) / 3600);
+      const m = Math.floor((seconds % 3600) / 60);
+      const s = seconds % 60;
+      const parts = [];
+      if (d) parts.push(d + 'd');
+      if (h) parts.push(h + 'h');
+      parts.push(m + 'm');
+      parts.push(s + 's');
+      return parts.join(' ');
+    }
+    function tickCountdowns() {
+      const now = getNowUnix();
+      const simClockTimeEl = document.getElementById('simClockTime');
+      if (simClockTimeEl && simSync) simClockTimeEl.textContent = formatSimTime(now);
+      const matchesEl = document.getElementById('matches');
+      if (!matchesEl) return;
+      matchesEl.querySelectorAll('.match').forEach(function (row) {
+        const countdown = row.querySelector('.countdown[data-time]');
+        const statusEl = row.querySelector('.match-status');
+        if (!countdown || !statusEl) return;
+        const t = countdown.getAttribute('data-time');
+        if (t === '' || t === null) { countdown.textContent = '—'; return; }
+        const sec = Math.max(0, parseInt(t, 10) - now);
+        countdown.textContent = sec > 0 ? ('Closes in ' + formatCountdown(sec)) : 'Closed';
+        countdown.classList.toggle('closed', sec <= 0);
+        if (sec <= 0 && statusEl.textContent === 'Open for bets') {
+          statusEl.textContent = 'Closed';
+          statusEl.className = 'match-status finished';
+        }
+      });
+    }
+
+    const container = document.getElementById('matches');
+    const eventTitleEl = document.getElementById('eventTitle');
+    const videoPlaceholder = document.getElementById('videoPlaceholder');
+    const videoEmbedWrap = document.getElementById('videoEmbedWrap');
+    const videoEmbed = document.getElementById('videoEmbed');
+
+    async function loadEvent() {
+      if (!eventKey) {
+        eventTitleEl.textContent = 'No event selected';
+        container.innerHTML = '<p style="color: var(--muted);">Go to <a href="/frontend.html">events</a> and pick an event.</p>';
+        return;
+      }
+      eventTitleEl.textContent = 'Loading…';
+      videoPlaceholder.style.display = 'block';
+      videoEmbedWrap.style.display = 'none';
+      container.innerHTML = '<p style="color: var(--muted);">Loading matches…</p>';
+
+      try {
+        const [eventRes, matchesRes] = await Promise.all([
+          fetch('/api/event/' + encodeURIComponent(eventKey)),
+          fetch('/api/matches?eventKey=' + encodeURIComponent(eventKey)),
+        ]);
+        const event = eventRes.ok ? await eventRes.json() : null;
+        const matches = matchesRes.ok ? await matchesRes.json() : [];
+
+        eventTitleEl.textContent = event ? (event.name || event.short_name || eventKey) : eventKey;
+        document.title = (event ? (event.short_name || event.name) : eventKey) + ' – FRC Match Markets';
+
+        var embedUrl = null;
+        if (event && event.webcasts && event.webcasts.length > 0) {
+          for (var i = 0; i < event.webcasts.length; i++) {
+            embedUrl = webcastToEmbedUrl(event.webcasts[i]);
+            if (embedUrl) break;
+          }
+        }
+        if (embedUrl) {
+          videoPlaceholder.style.display = 'none';
+          videoEmbedWrap.style.display = 'block';
+          videoEmbed.src = embedUrl;
+        } else {
+          videoPlaceholder.style.display = 'block';
+          videoPlaceholder.textContent = 'No stream available for this event.';
+          videoEmbedWrap.style.display = 'none';
+          videoEmbed.src = 'about:blank';
+        }
+
+        container.innerHTML = '';
+        const now = getNowUnix();
+        const sorted = simSync
+          ? [...matches].sort((a, b) => {
+              const aTime = a.time != null ? a.time : 0;
+              const bTime = b.time != null ? b.time : 0;
+              const aUp = aTime > now;
+              const bUp = bTime > now;
+              if (aUp !== bUp) return aUp ? -1 : 1;
+              return aUp ? aTime - bTime : bTime - aTime;
+            })
+          : matches;
+        const timeVal = (match) => (match.time != null && match.time > 0) ? String(match.time) : '';
+        const fromEventQ = '&fromEvent=' + encodeURIComponent(eventKey);
+        function formatCompLevel(cl) {
+          if (!cl) return '';
+          const s = (cl + '').toLowerCase();
+          if (s === 'qm') return 'Qualifier Match';
+          if (s === 'qf') return 'Quarter Finals';
+          if (s === 'sf' || s === 'sm') return 'Semi Finals';
+          if (s === 'f') return 'Finals';
+          return (cl + '').toUpperCase();
+        }
+        function teamNumbers(keys) {
+          if (!keys || !keys.length) return '—';
+          return keys.map(function (k) { return (k + '').replace(/^frc/i, ''); }).join(', ');
+        }
+        sorted.forEach(match => {
+          const red = match.alliances?.red;
+          const blue = match.alliances?.blue;
+          const redScore = red?.score;
+          const blueScore = blue?.score;
+          const timePassed = match.time != null && match.time > 0 && now >= match.time;
+          const marketClosed = !!match.marketResolved || timePassed;
+          const isFinished = (redScore != null && blueScore != null) || marketClosed;
+          const statusClass = isFinished ? 'finished' : 'open';
+          const statusLabel = isFinished ? (marketClosed && redScore == null ? 'Closed' : 'Final') : 'Open for bets';
+          const scoreLine = isFinished && redScore != null && blueScore != null
+            ? '<div class="match-score"><span class="red">' + redScore + '</span> – <span class="blue">' + blueScore + '</span></div>'
+            : (marketClosed ? '<div class="match-score" style="color: var(--muted);">Market closed</div>' : '');
+          const pool = match.pool || {};
+          const totalPool = (pool.totalRed || 0) + (pool.totalBlue || 0);
+          const redPct = totalPool === 0 ? 50 : Math.round(100 * (pool.totalRed || 0) / totalPool);
+          const bluePct = totalPool === 0 ? 50 : (100 - redPct);
+          const chancesLine = '<div class="match-chances"><span class="chance red">Red ' + redPct + '%</span><span class="chance blue">Blue ' + bluePct + '%</span></div>';
+          const div = document.createElement('div');
+          div.className = 'match';
+          div.innerHTML =
+            '<div class="match-info">' +
+            '<strong>' + formatCompLevel(match.comp_level) + ' ' + match.match_number + '</strong>' +
+            '<span class="match-status ' + statusClass + '">' + statusLabel + '</span>' +
+            scoreLine +
+            chancesLine +
+            '<div class="countdown" data-time="' + timeVal(match) + '">—</div>' +
+            '<span class="red">Red:</span> ' + teamNumbers(red && red.team_keys) + '<br>' +
+            '<span class="blue">Blue:</span> ' + teamNumbers(blue && blue.team_keys) +
+            '</div>' +
+            '<div class="match-actions">' +
+            '<a class="btn-view" href="/match.html?match=' + encodeURIComponent(match.key) + fromEventQ + '">View</a>' +
+            '<a class="btn-trade" href="/market.html?match=' + encodeURIComponent(match.key) + fromEventQ + '">Trade</a>' +
+            '</div>';
+          container.appendChild(div);
+        });
+        if (matches.length === 0) container.innerHTML = '<p style="color: var(--muted);">No matches yet.</p>';
+        tickCountdowns();
+      } catch (e) {
+        eventTitleEl.textContent = eventKey;
+        container.innerHTML = '<p style="color: #ef4444;">Could not load event or matches.</p>';
+      }
+    }
+
+    function renderAuth() {
+      const user = auth.getUser();
+      document.getElementById('userBalance').style.display = user ? 'inline' : 'none';
+      document.getElementById('userName').style.display = user ? 'inline' : 'none';
+      document.getElementById('linkBets').style.display = user ? 'inline' : 'none';
+      document.getElementById('linkSignup').style.display = user ? 'none' : 'inline';
+      document.getElementById('linkLogin').style.display = user ? 'none' : 'inline';
+      document.getElementById('btnLogout').style.display = user ? 'inline' : 'none';
+      if (user) {
+        document.getElementById('userBalance').textContent = '$' + Number(user.balance).toFixed(2);
+        document.getElementById('userName').textContent = user.username;
+      }
+      setupLeaderboardSort();
+      loadLeaderboard();
+    }
+
+    document.getElementById('btnLogout').onclick = () => { auth.logout(); renderAuth(); };
+
+    (async () => {
+      await auth.fetchMe();
+      await fetchSimTime();
+      renderAuth();
+      loadEvent();
+      if (!window._eventCountdownInterval) {
+        window._eventCountdownInterval = setInterval(tickCountdowns, simSync ? 100 : 1000);
+      }
+    })();
+  </script>
+</body>
+</html>

@@ -46,8 +46,8 @@
           <input type="text" name="username" autocomplete="username" required minlength="2">
           <label>Password (min 4 characters)</label>
           <input type="password" name="password" autocomplete="new-password" required minlength="4">
-          <label>Team number</label>
-          <input type="text" name="teamNumber" inputmode="numeric" pattern="[0-9]+" placeholder="e.g. 1418" required minlength="1" autocomplete="off">
+          <label for="signup-team">Team number <span style="color: var(--err);">*</span></label>
+          <input id="signup-team" type="text" name="teamNumber" inputmode="numeric" pattern="[0-9]+" placeholder="e.g. 1418" required minlength="1" autocomplete="off" title="Team number is required">
           <button type="submit">Sign up — get $100</button>
         </form>
       </div>

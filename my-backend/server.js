@@ -39,18 +39,25 @@ const DEFAULT_EVENT = "2025txdal";
 const DEFAULT_BALANCE = 100;
 const STORE_PATH = path.join(__dirname, "data", "store.json");
 
-// --- Virtual time (simulation) for multiplayer testing ---
-// Set VIRTUAL_START_TIME (ISO e.g. 2025-02-20T08:00:00) to run sim; time ticks VIRTUAL_SPEED x real time (default 10).
+// --- Time mode: sim (virtual time) or realtime ---
+// MODE=sim  → virtual time for testing; requires VIRTUAL_START_TIME (ISO e.g. 2025-02-20T08:00:00), optional VIRTUAL_SPEED (default 10).
+// MODE=realtime or unset → use real wall-clock time.
+const TIME_MODE = (process.env.MODE || process.env.TIME_MODE || "realtime").toString().trim().toLowerCase();
+const SIM_MODE = TIME_MODE === "sim";
 const VIRTUAL_START_TIME_RAW = process.env.VIRTUAL_START_TIME || "";
 const VIRTUAL_SPEED = Math.max(1, parseInt(process.env.VIRTUAL_SPEED || "10", 10));
 const serverStartRealMs = Date.now();
 let virtualStartUnix = null;
-if (VIRTUAL_START_TIME_RAW) {
+if (SIM_MODE && VIRTUAL_START_TIME_RAW) {
   const d = new Date(VIRTUAL_START_TIME_RAW.trim());
   if (!isNaN(d.getTime())) {
     virtualStartUnix = Math.floor(d.getTime() / 1000);
-    console.log("Simulation mode: virtual time started at", new Date(virtualStartUnix * 1000).toISOString(), "speed", VIRTUAL_SPEED + "x");
+    console.log("Time mode: sim — virtual time started at", new Date(virtualStartUnix * 1000).toISOString(), "speed", VIRTUAL_SPEED + "x");
+  } else {
+    console.warn("Time mode: sim but VIRTUAL_START_TIME invalid; using real time.");
   }
+} else if (SIM_MODE && !VIRTUAL_START_TIME_RAW) {
+  console.warn("Time mode: sim but VIRTUAL_START_TIME not set; using real time. Set VIRTUAL_START_TIME=2025-02-20T08:00:00 to enable sim.");
 }
 function getVirtualTime() {
   if (virtualStartUnix == null) return null;
@@ -111,33 +118,58 @@ function saveStore() {
 }
 
 let loaded = loadStore();
-const users = loaded ? loaded.users : new Map();
+let users = loaded ? loaded.users : new Map();
 let nextUserId = loaded ? loaded.nextUserId : 1;
 const markets = loaded ? loaded.markets : new Map();
 let bets = loaded ? loaded.bets : [];
 let marketTotals = loaded ? loaded.marketTotals : {};
-const sessions = loaded ? loaded.sessions : new Map();
+let sessions = loaded ? loaded.sessions : new Map();
 
-const RESET_BALANCES_AND_BETS = /^(1|true|yes)$/i.test(String(process.env.RESET_BALANCES_AND_BETS || "").trim());
-if (RESET_BALANCES_AND_BETS) {
-  users.forEach((u) => { u.balance = DEFAULT_BALANCE; });
+const DELETE_ALL_USER_DATA = /^(1|true|yes)$/i.test(String(process.env.DELETE_ALL_USER_DATA || "").trim());
+if (DELETE_ALL_USER_DATA) {
+  users = new Map();
+  nextUserId = 1;
+  sessions = new Map();
   bets = [];
   marketTotals = {};
   markets.forEach((m) => { m.resolved = null; m.winner = null; });
   const data = {
-    users: Object.fromEntries(users),
+    users: {},
     nextUserId,
     markets: Object.fromEntries(markets),
     bets,
     marketTotals,
-    sessions: Object.fromEntries(sessions),
+    sessions: {},
   };
   try {
     fs.mkdirSync(path.dirname(STORE_PATH), { recursive: true });
     fs.writeFileSync(STORE_PATH, JSON.stringify(data, null, 2), "utf8");
-    console.log("RESET_BALANCES_AND_BETS=true: all balances set to $" + DEFAULT_BALANCE + ", all bets and pool totals cleared, markets reopened.");
+    console.log("DELETE_ALL_USER_DATA=true: all users, sessions, bets and pool totals deleted; markets reopened.");
   } catch (e) {
-    console.error("Reset save failed:", e.message);
+    console.error("Delete user data save failed:", e.message);
+  }
+} else {
+  const RESET_BALANCES_AND_BETS = /^(1|true|yes)$/i.test(String(process.env.RESET_BALANCES_AND_BETS || "").trim());
+  if (RESET_BALANCES_AND_BETS) {
+    users.forEach((u) => { u.balance = DEFAULT_BALANCE; });
+    bets = [];
+    marketTotals = {};
+    markets.forEach((m) => { m.resolved = null; m.winner = null; });
+    const data = {
+      users: Object.fromEntries(users),
+      nextUserId,
+      markets: Object.fromEntries(markets),
+      bets,
+      marketTotals,
+      sessions: Object.fromEntries(sessions),
+    };
+    try {
+      fs.mkdirSync(path.dirname(STORE_PATH), { recursive: true });
+      fs.writeFileSync(STORE_PATH, JSON.stringify(data, null, 2), "utf8");
+      console.log("RESET_BALANCES_AND_BETS=true: all balances set to $" + DEFAULT_BALANCE + ", all bets and pool totals cleared, markets reopened.");
+    } catch (e) {
+      console.error("Reset save failed:", e.message);
+    }
   }
 }
 
@@ -353,6 +385,36 @@ app.get("/api/events/upcoming", async (req, res) => {
   }
 });
 
+app.get("/api/events/recent", async (req, res) => {
+  try {
+    const limit = Math.min(5, Math.max(1, parseInt(req.query.limit || "2", 10)));
+    const sim = getVirtualTime();
+    const nowMs = sim ? sim.virtualUnix * 1000 : Date.now();
+    const today = new Date(nowMs).toISOString().slice(0, 10);
+    const year = new Date(nowMs).getFullYear();
+    const events = await tba(`/events/${year}`);
+    const prevYearEvents = year > 2020 ? await tba(`/events/${year - 1}`).catch(() => []) : [];
+    const all = [...(Array.isArray(events) ? events : []), ...(Array.isArray(prevYearEvents) ? prevYearEvents : [])];
+    const ended = all
+      .filter((e) => e.end_date && e.end_date < today)
+      .sort((a, b) => (b.end_date || '').localeCompare(a.end_date || ''));
+    const recent = ended.slice(0, limit).map((e) => ({
+      key: e.key,
+      name: e.name,
+      short_name: e.short_name || e.name,
+      start_date: e.start_date,
+      end_date: e.end_date,
+      city: e.city,
+      state_prov: e.state_prov,
+      has_open_matches: false,
+    }));
+    res.json(recent);
+  } catch (e) {
+    console.error(e.message);
+    res.status(500).json({ error: "Error fetching recent events" });
+  }
+});
+
 app.get("/event/matches/:eventKey", async (req, res) => {
   try {
     const matches = await tba(`/event/${req.params.eventKey}/matches`);
@@ -378,7 +440,17 @@ app.get("/api/matches", async (req, res) => {
   try {
     const matches = await tba(`/event/${eventKey}/matches`);
     const masked = Array.isArray(matches) ? matches.map((m) => maskMatchIfSim(m)) : matches;
-    res.json(masked);
+    const withMarket = Array.isArray(masked)
+      ? masked.map((m) => {
+          const tot = marketTotals[m.key] || { totalRed: 0, totalBlue: 0 };
+          return {
+            ...m,
+            marketResolved: !!markets.get(m.key)?.resolved,
+            pool: { totalRed: tot.totalRed || 0, totalBlue: tot.totalBlue || 0 },
+          };
+        })
+      : masked;
+    res.json(withMarket);
   } catch (e) {
     console.error(e.message);
     res.status(500).json({ error: "Error fetching matches" });
@@ -547,8 +619,8 @@ app.get("/api/markets/:marketId/position", (req, res) => {
 app.listen(process.env.PORT || 3000, () => {
   console.log("Server running on http://localhost:3000");
   if (virtualStartUnix != null) {
-    console.log("Simulation: set VIRTUAL_START_TIME (e.g. 2025-02-20T08:00:00) and optional VIRTUAL_SPEED (default 10) to test multiplayer betting in fast-forward.");
+    console.log("Time mode: sim (virtual time) active.");
   } else {
-    console.log("To enable simulation mode: VIRTUAL_START_TIME=2025-02-20T08:00:00 [VIRTUAL_SPEED=10] node server.js");
+    console.log("Time mode: realtime. Set MODE=sim and VIRTUAL_START_TIME=2025-02-20T08:00:00 [VIRTUAL_SPEED=10] for sim.");
   }
 });
