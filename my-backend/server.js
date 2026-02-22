@@ -5,7 +5,7 @@ const fs = require("fs");
 const crypto = require("crypto");
 
 const app = express();
-const TBA_KEY = "bxNXp32HJj2ds3Kw8hj9iou6LK9fdDZP32uoEId2wj4UPF15jPJmil6K8vCNi6S1";
+const TBA_KEY = process.env.TBA_KEY;
 const DEFAULT_EVENT = "2025txdal";
 const DEFAULT_BALANCE = 100;
 const STORE_PATH = path.join(__dirname, "data", "store.json");
