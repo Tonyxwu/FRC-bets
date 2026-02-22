@@ -9,7 +9,10 @@
   style.textContent = [
     '/* Universal top bar - same on every page */',
     '.top-bar-sticky { position: sticky; top: 0; z-index: 1000; }',
-    '.top-bar { width: 100%; flex-shrink: 0; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; padding: 14px 20px; background: #161a22; border-bottom: 1px solid #2a3142; }',
+    '.top-bar { width: 100%; flex-shrink: 0; display: flex; align-items: center; flex-wrap: wrap; gap: 12px; padding: 14px 20px; background: #161a22; border-bottom: 1px solid #2a3142; }',
+    '.top-bar-left { flex: 1; min-width: 0; }',
+    '.top-bar-center { flex: 0 0 auto; display: flex; justify-content: center; }',
+    '.top-bar-right { flex: 1; display: flex; justify-content: flex-end; align-items: center; gap: 14px; flex-wrap: wrap; min-width: 0; }',
     '.top-bar .brand { margin: 0; }',
     '.top-bar .brand a { color: #e6e9f0; text-decoration: none; font-size: 1.25rem; font-weight: 700; }',
     '.top-bar .brand a:hover { color: #3b82f6; }',
@@ -46,16 +49,16 @@
   bar.className = 'top-bar top-bar-sticky';
   bar.id = 'app-top-bar';
   bar.innerHTML = [
-    '<div class="brand">',
+    '<div class="top-bar-left"><div class="brand">',
     '  <h1 class="brand" style="margin: 0;"><a href="/frontend.html">FRC Match Markets</a></h1>',
     '  <p class="sub" style="margin: 2px 0 0;">Watch the stream and bet on matches. New users get $100.</p>',
-    '</div>',
-    '<nav class="top-bar-nav" id="authBar">',
+    '</div></div>',
+    '<div class="top-bar-center"><span class="sim-clock" id="simClock" style="display: none;"><span class="label">Sim time</span><span id="simClockTime">—</span></span></div>',
+    '<nav class="top-bar-nav top-bar-right" id="authBar">',
     '  ' + leaderboardHtml,
     '  <a href="/frontend.html">Home</a>',
     '  <a href="/bets.html" id="linkBets" style="display: none;">My bets</a>',
     '  <a href="/auth.html" id="linkLogin">Sign in</a>',
-    '  <span class="sim-clock" id="simClock" style="display: none;"><span class="label">Sim time</span><span id="simClockTime">—</span></span>',
     '  <span id="userBalance" class="balance" style="display: none;"></span>',
     '  <span id="userName" style="display: none;"></span>',
     '  <button type="button" id="btnLogout" style="display: none;">Log out</button>',
