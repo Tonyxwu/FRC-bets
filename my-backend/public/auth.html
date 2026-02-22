@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Sign up / Log in</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root { --bg: #0d0f14; --card: #161a22; --border: #2a3142; --blue: #3b82f6; --muted: #8b92a5; --text: #e6e9f0; --err: #ef4444; }
+    * { box-sizing: border-box; }
+    body { font-family: 'Outfit', sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 24px; min-height: 100vh; display: flex; align-items: center; justify-content: center; }
+    .box { width: 100%; max-width: 340px; background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 28px; }
+    h1 { font-size: 1.35rem; margin: 0 0 8px; }
+    .sub { color: var(--muted); font-size: 0.9rem; margin-bottom: 24px; }
+    .tabs { display: flex; gap: 0; margin-bottom: 20px; }
+    .tabs button { flex: 1; padding: 10px; border: 1px solid var(--border); background: var(--bg); color: var(--text); font-family: inherit; font-weight: 600; cursor: pointer; border-radius: 6px 6px 0 0; }
+    .tabs button:last-child { border-radius: 0 6px 0 0; }
+    .tabs button.active { background: var(--card); border-bottom-color: var(--card); }
+    .panel { display: none; padding: 0; }
+    .panel.active { display: block; }
+    label { display: block; font-size: 0.85rem; color: var(--muted); margin-bottom: 4px; }
+    input { width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); color: var(--text); font-size: 1rem; margin-bottom: 14px; }
+    .err { color: var(--err); font-size: 0.85rem; margin-bottom: 10px; min-height: 20px; }
+    button[type="submit"] { width: 100%; padding: 12px; border: none; border-radius: 8px; background: var(--blue); color: #fff; font-family: inherit; font-weight: 600; font-size: 1rem; cursor: pointer; }
+    button[type="submit"]:hover { filter: brightness(1.1); }
+    a { color: var(--blue); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .back { display: inline-block; margin-bottom: 16px; }
+  </style>
+</head>
+<body>
+  <div>
+    <a class="back" href="/frontend.html">← Back</a>
+    <div class="box">
+      <h1>FRC Match Bets</h1>
+      <p class="sub">New users get $100 to bet on ongoing matches.</p>
+      <div class="tabs">
+        <button type="button" id="tabSignup" class="active">Sign up</button>
+        <button type="button" id="tabLogin">Log in</button>
+      </div>
+      <div id="panelSignup" class="panel active">
+        <form id="formSignup">
+          <div class="err" id="errSignup"></div>
+          <label>Username</label>
+          <input type="text" name="username" autocomplete="username" required minlength="2">
+          <label>Password (min 4 characters)</label>
+          <input type="password" name="password" autocomplete="new-password" required minlength="4">
+          <label>Team number</label>
+          <input type="text" name="teamNumber" inputmode="numeric" pattern="[0-9]+" placeholder="e.g. 1418" required minlength="1" autocomplete="off">
+          <button type="submit">Sign up — get $100</button>
+        </form>
+      </div>
+      <div id="panelLogin" class="panel">
+        <form id="formLogin">
+          <div class="err" id="errLogin"></div>
+          <label>Username</label>
+          <input type="text" name="username" autocomplete="username" required>
+          <label>Password</label>
+          <input type="password" name="password" autocomplete="current-password" required>
+          <button type="submit">Log in</button>
+        </form>
+      </div>
+    </div>
+  </div>
+  <script src="auth.js"></script>
+  <script>
+    const tabSignup = document.getElementById("tabSignup");
+    const tabLogin = document.getElementById("tabLogin");
+    const panelSignup = document.getElementById("panelSignup");
+    const panelLogin = document.getElementById("panelLogin");
+    const formSignup = document.getElementById("formSignup");
+    const formLogin = document.getElementById("formLogin");
+    const errSignup = document.getElementById("errSignup");
+    const errLogin = document.getElementById("errLogin");
+
+    function showPanel(signup) {
+      panelSignup.classList.toggle("active", signup);
+      panelLogin.classList.toggle("active", !signup);
+      tabSignup.classList.toggle("active", signup);
+      tabLogin.classList.toggle("active", !signup);
+      errSignup.textContent = "";
+      errLogin.textContent = "";
+    }
+    tabSignup.onclick = () => showPanel(true);
+    tabLogin.onclick = () => showPanel(false);
+
+    formSignup.onsubmit = async (e) => {
+      e.preventDefault();
+      errSignup.textContent = "";
+      const username = formSignup.username.value.trim();
+      const password = formSignup.password.value;
+      const teamNumber = formSignup.teamNumber && formSignup.teamNumber.value ? formSignup.teamNumber.value.trim() : "";
+      if (!teamNumber) {
+        errSignup.textContent = "Team number is required.";
+        return;
+      }
+      const res = await fetch("/api/signup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, password, teamNumber }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        errSignup.textContent = data.error || "Sign up failed";
+        return;
+      }
+      auth.setToken(data.token, data.user);
+      const next = new URLSearchParams(window.location.search).get("next");
+      if (next) {
+        try {
+          const u = new URL(next);
+          if (u.origin === window.location.origin) { window.location.href = next; return; }
+        } catch (_) {}
+      }
+      window.location.href = "/frontend.html";
+    };
+
+    formLogin.onsubmit = async (e) => {
+      e.preventDefault();
+      errLogin.textContent = "";
+      const username = formLogin.username.value.trim();
+      const password = formLogin.password.value;
+      const res = await fetch("/api/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, password }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        errLogin.textContent = data.error || "Log in failed";
+        return;
+      }
+      auth.setToken(data.token, data.user);
+      const next = new URLSearchParams(window.location.search).get("next");
+      if (next) {
+        try {
+          const u = new URL(next);
+          if (u.origin === window.location.origin) { window.location.href = next; return; }
+        } catch (_) {}
+      }
+      window.location.href = "/frontend.html";
+    };
+  </script>
+</body>
+</html>

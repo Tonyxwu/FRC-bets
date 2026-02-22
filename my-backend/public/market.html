@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>FRC Match Market</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Outfit:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0d0f14;
+      --card: #161a22;
+      --border: #2a3142;
+      --red: #e5484d;
+      --red-dim: #c93c41;
+      --blue: #3b82f6;
+      --blue-dim: #2563eb;
+      --yes: #22c55e;
+      --no: #ef4444;
+      --muted: #8b92a5;
+      --text: #e6e9f0;
+    }
+    * { box-sizing: border-box; }
+    body {
+      font-family: 'Outfit', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      margin: 0;
+      padding: 24px;
+      min-height: 100vh;
+    }
+    .container { max-width: 560px; margin: 0 auto; }
+    h1 { font-size: 1.5rem; font-weight: 700; margin: 0 0 8px; }
+    .sub { color: var(--muted); font-size: 0.9rem; margin-bottom: 24px; }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 16px;
+    }
+    .question { font-size: 1.1rem; margin-bottom: 16px; color: var(--text); }
+    .price-row {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+    .price-big {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 2rem;
+      font-weight: 600;
+    }
+    .price-big.red { color: var(--red); }
+    .price-big.blue { color: var(--blue); }
+    .trade-row { display: flex; gap: 12px; margin-bottom: 12px; align-items: center; flex-wrap: wrap; }
+    .trade-row input[type="number"] {
+      width: 100px;
+      padding: 10px 12px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 1rem;
+    }
+    .btn {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 8px;
+      font-family: 'Outfit', sans-serif;
+      font-weight: 600;
+      cursor: pointer;
+      font-size: 0.95rem;
+    }
+    .btn-red { background: var(--red); color: #fff; }
+    .btn-blue { background: var(--blue); color: #fff; }
+    .btn-red:hover { filter: brightness(1.1); }
+    .btn-blue:hover { filter: brightness(1.1); }
+    .btn-resolve {
+      background: var(--border);
+      color: var(--text);
+      margin-top: 8px;
+    }
+    .btn-resolve:hover { background: #3a4255; }
+    .position {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.9rem;
+      color: var(--muted);
+    }
+    .position span.red { color: var(--red); }
+    .position span.blue { color: var(--blue); }
+    .resolved {
+      padding: 12px;
+      border-radius: 8px;
+      margin-top: 12px;
+      font-weight: 600;
+    }
+    .resolved.red { background: rgba(229,72,77,0.2); color: var(--red); }
+    .resolved.blue { background: rgba(59,130,246,0.2); color: var(--blue); }
+    .resolved.tie { background: rgba(139,146,165,0.2); color: var(--muted); }
+    a {
+      color: var(--blue);
+      text-decoration: none;
+    }
+    a:hover { text-decoration: underline; }
+    .back { display: inline-block; margin-bottom: 20px; }
+    .alliances { margin-bottom: 16px; font-size: 0.9rem; }
+    .alliances .red { color: var(--red); }
+    .alliances .blue { color: var(--blue); }
+    .balance { font-family: 'JetBrains Mono', monospace; color: var(--yes); font-weight: 600; margin-bottom: 12px; }
+    .login-prompt { background: rgba(59,130,246,0.15); border: 1px solid var(--blue); border-radius: 8px; padding: 14px; margin-bottom: 12px; }
+    .login-prompt a { font-weight: 600; }
+    .market-countdown { font-size: 0.9rem; color: var(--muted); margin-bottom: 12px; font-variant-numeric: tabular-nums; }
+    .market-countdown.closed { color: #ef4444; }
+    .sim-clock {
+      font-size: 0.85rem; font-variant-numeric: tabular-nums;
+      color: #f59e0b; background: rgba(245,158,11,0.15); border: 1px solid rgba(245,158,11,0.4);
+      border-radius: 6px; padding: 6px 10px; margin-bottom: 10px; display: inline-block;
+    }
+    .sim-clock span.label { color: var(--muted); font-size: 0.75rem; margin-right: 6px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <a class="back" href="/frontend.html">← Back to matches</a>
+    <h1 id="title">Loading...</h1>
+    <p class="sub" id="sub"></p>
+    <p class="sim-clock" id="simClock" style="display: none;"><span class="label">Sim time</span><span id="simClockTime">—</span></p>
+    <p class="market-countdown" id="marketCountdown" style="display: none;"></p>
+
+    <div class="card">
+      <div id="balanceEl" class="balance" style="display: none;"></div>
+      <div id="loginPrompt" class="login-prompt" style="display: none;"> <a href="/auth.html">Log in</a> or <a href="/auth.html">sign up</a> (get $100) to place bets on ongoing matches. </div>
+      <div class="question" id="question">Who wins? Red or Blue.</div>
+      <div class="alliances" id="alliances"></div>
+      <div class="price-row">
+        <span class="price-big red" id="poolRed">$0</span>
+        <span style="color: var(--muted)">Red pool</span>
+        <span style="color: var(--muted)">·</span>
+        <span class="price-big blue" id="poolBlue">$0</span>
+        <span style="color: var(--muted)">Blue pool</span>
+      </div>
+
+      <div id="tradeArea">
+        <p class="trade-help" style="font-size: 0.85rem; color: var(--muted); margin: 0 0 10px;">
+          Bet a <strong style="color: var(--text);">dollar amount</strong> on Red or Blue. All money goes into the pool. When the match is resolved, the <strong>winning side splits the entire pool</strong> proportionally: your share = (your bet on that side ÷ total on that side) × whole pool. Tie = everyone gets their stake back.
+        </p>
+        <div class="trade-row">
+          <label style="font-size: 0.9rem;">Amount $</label>
+          <input type="number" id="amount" min="0.01" step="0.01" value="10" placeholder="Dollars">
+          <button class="btn btn-red" id="btnRed">Bet on Red</button>
+          <button class="btn btn-blue" id="btnBlue">Bet on Blue</button>
+        </div>
+        <div class="cost-preview" id="costPreview" style="font-size: 0.9rem; color: var(--muted); margin-bottom: 8px;"></div>
+        <p class="trade-help" style="font-size: 0.8rem; color: var(--muted); margin: 8px 0 0;">When the match is scored in The Blue Alliance, this market is resolved automatically and payouts are applied. No action needed.</p>
+      </div>
+
+      <div class="position" id="position">Your bets: —</div>
+      <div id="resolvedBox"></div>
+    </div>
+  </div>
+
+  <script src="auth.js"></script>
+  <script>
+    const matchKey = new URLSearchParams(window.location.search).get('match') || window.location.pathname.replace(/\/market\.html\/?/, '').replace(/^\//, '');
+    if (!matchKey) {
+      document.getElementById('title').textContent = 'No match selected';
+      document.getElementById('tradeArea').innerHTML = '<p><a href="/frontend.html">Pick a match</a> to trade.</p>';
+    } else {
+      let market = null;
+      let match = null;
+      let simSync = null;
+
+      async function fetchSimTime() {
+        try {
+          const res = await fetch('/api/sim/time');
+          const data = await res.json();
+          if (data.enabled && data.virtualUnix != null && data.speedFactor != null) {
+            simSync = { virtualUnix: data.virtualUnix, realUnixMs: Date.now(), speedFactor: data.speedFactor };
+            const el = document.getElementById('simClock');
+            if (el) { el.style.display = 'block'; }
+            return true;
+          }
+        } catch (_) {}
+        simSync = null;
+        const el = document.getElementById('simClock');
+        if (el) el.style.display = 'none';
+        return false;
+      }
+      function getNowUnix() {
+        if (!simSync) return Math.floor(Date.now() / 1000);
+        const realElapsedSec = (Date.now() - simSync.realUnixMs) / 1000;
+        return Math.floor(simSync.virtualUnix + realElapsedSec * simSync.speedFactor);
+      }
+      function formatSimTime(unix) {
+        const d = new Date(unix * 1000);
+        return d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }) +
+          ' ' + d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
+      }
+
+      function formatCountdown(seconds) {
+        if (seconds == null || seconds < 0) return '—';
+        if (seconds <= 0) return 'Closed';
+        const d = Math.floor(seconds / 86400);
+        const h = Math.floor((seconds % 86400) / 3600);
+        const m = Math.floor((seconds % 3600) / 60);
+        const s = seconds % 60;
+        const parts = [];
+        if (d) parts.push(d + 'd');
+        if (h) parts.push(h + 'h');
+        parts.push(m + 'm');
+        parts.push(s + 's');
+        return parts.join(' ');
+      }
+      function updateMarketCountdown() {
+        const countdownEl = document.getElementById('marketCountdown');
+        const simClockTimeEl = document.getElementById('simClockTime');
+        if (simSync && simClockTimeEl) simClockTimeEl.textContent = formatSimTime(getNowUnix());
+        if (!match || match.time == null || (market && market.resolved !== null)) {
+          if (countdownEl) countdownEl.style.display = 'none';
+          return;
+        }
+        countdownEl.style.display = 'block';
+        const now = getNowUnix();
+        const sec = Math.max(0, match.time - now);
+        countdownEl.textContent = sec > 0 ? ('Market closes in ' + formatCountdown(sec)) : 'Market closed';
+        countdownEl.classList.toggle('closed', sec <= 0);
+      }
+      async function loadMatch() {
+        const res = await fetch(`/api/match/${matchKey}`);
+        if (!res.ok) return;
+        match = await res.json();
+        document.getElementById('title').textContent = `${(match.comp_level || '').toUpperCase()} ${match.match_number || matchKey}`;
+        document.getElementById('sub').textContent = matchKey;
+        const red = match.alliances?.red;
+        const blue = match.alliances?.blue;
+        if (red && blue) {
+          document.getElementById('alliances').innerHTML = `
+            <span class="red">Red:</span> ${red.team_keys?.join(', ') || '—'} ·
+            <span class="blue">Blue:</span> ${blue.team_keys?.join(', ') || '—'}
+          `;
+        }
+        updateMarketCountdown();
+      }
+
+      async function ensureMarket() {
+        await fetch('/api/markets', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ matchKey }) });
+      }
+
+      function updateBalance(user) {
+        const el = document.getElementById('balanceEl');
+        const prompt = document.getElementById('loginPrompt');
+        const tradeRow = document.querySelector('.trade-row');
+        if (user) {
+          el.style.display = 'block';
+          el.textContent = 'Balance: $' + Number(user.balance).toFixed(2);
+          prompt.style.display = 'none';
+          if (tradeRow) tradeRow.style.display = 'flex';
+        } else {
+          el.style.display = 'none';
+          prompt.style.display = 'block';
+          if (tradeRow) tradeRow.style.display = 'none';
+        }
+      }
+
+      async function loadMarket() {
+        const res = await fetch(`/api/markets/${matchKey}`);
+        if (!res.ok) return;
+        market = await res.json();
+        document.getElementById('question').textContent = market.question || 'Who wins? Red or Blue.';
+        const tr = (market.totalRed || 0).toFixed(2);
+        const tb = (market.totalBlue || 0).toFixed(2);
+        document.getElementById('poolRed').textContent = '$' + tr;
+        document.getElementById('poolBlue').textContent = '$' + tb;
+
+        if (market.resolved !== null) {
+          document.getElementById('tradeArea').innerHTML = '<p style="color: var(--muted);">Market closed. Result was applied automatically from TBA.</p>';
+          const box = document.getElementById('resolvedBox');
+          box.className = 'resolved ' + (market.winner || 'tie');
+          box.textContent = 'Result: ' + (market.winner === 'tie' ? 'Tie' : market.winner.toUpperCase() + ' wins');
+        }
+        const posRes = await fetch(`/api/markets/${matchKey}/position`, { headers: auth.getAuthHeader() });
+        const pos = await posRes.json();
+        document.getElementById('position').innerHTML = `Your bets: <span class="red">Red $${(pos.red || 0).toFixed(2)}</span> · <span class="blue">Blue $${(pos.blue || 0).toFixed(2)}</span>`;
+        updateCostPreview();
+        updateMarketCountdown();
+      }
+
+      function attachTradeInputListeners() {
+        const amountEl = document.getElementById('amount');
+        if (amountEl) amountEl.oninput = amountEl.onchange = updateCostPreview;
+      }
+
+      function updateCostPreview() {
+        const amount = parseFloat(document.getElementById('amount').value, 10) || 0;
+        const amt = Math.max(0, amount).toFixed(2);
+        const el = document.getElementById('costPreview');
+        if (el) el.textContent = 'You will add $' + amt + ' to the chosen side\'s pool.';
+      }
+
+      async function order(side) {
+        if (!auth.isLoggedIn()) { alert('Please log in to place bets.'); window.location.href = '/auth.html?next=' + encodeURIComponent(window.location.href); return; }
+        const amount = parseFloat(document.getElementById('amount').value, 10);
+        if (!amount || amount <= 0) { alert('Enter a positive amount.'); return; }
+        const body = { side, amount };
+        const headers = { 'Content-Type': 'application/json', ...auth.getAuthHeader() };
+        if (simSync) {
+          const d = new Date(getNowUnix() * 1000);
+          headers['X-Sim-Datetime'] = d.toISOString().slice(0, 19);
+        }
+        const res = await fetch(`/api/markets/${matchKey}/order`, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify(body),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) { alert(data.error || 'Order failed'); return; }
+        if (data.balance != null) { auth.setToken(auth.getToken(), { ...auth.getUser(), balance: data.balance }); updateBalance(auth.getUser()); }
+        loadMarket();
+      }
+
+      document.getElementById('btnRed').onclick = () => order('red');
+      document.getElementById('btnBlue').onclick = () => order('blue');
+
+      (async () => {
+        await fetchSimTime();
+        await loadMatch();
+        await ensureMarket();
+        const user = await auth.fetchMe();
+        updateBalance(user || auth.getUser());
+        await loadMarket();
+        attachTradeInputListeners();
+        setInterval(updateMarketCountdown, simSync ? 100 : 1000);
+      })();
+    }
+  </script>
+</body>
+</html>

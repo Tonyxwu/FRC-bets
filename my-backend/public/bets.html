@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>My bets</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Outfit:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root { --bg: #0d0f14; --card: #161a22; --border: #2a3142; --blue: #3b82f6; --muted: #8b92a5; --text: #e6e9f0; --yes: #22c55e; --no: #ef4444; }
+    * { box-sizing: border-box; }
+    body { font-family: 'Outfit', sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 24px; min-height: 100vh; }
+    .container { max-width: 640px; margin: 0 auto; }
+    h1 { font-size: 1.4rem; margin: 0 0 8px; }
+    a { color: var(--blue); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .back { display: inline-block; margin-bottom: 20px; }
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; margin-bottom: 10px; }
+    .card.won { background: rgba(34, 197, 94, 0.12); border-color: rgba(34, 197, 94, 0.5); }
+    .card h3 { font-size: 0.95rem; margin: 0 0 8px; }
+    .card .earned { font-size: 0.9rem; font-weight: 600; color: var(--yes); margin-top: 8px; }
+    .card .meta { font-size: 0.85rem; color: var(--muted); }
+    .card .position { font-family: 'JetBrains Mono', monospace; font-size: 0.9rem; margin-top: 6px; }
+    .card .position .red { color: #e5484d; }
+    .card .position .blue { color: var(--blue); }
+    .section { margin-bottom: 24px; }
+    .section h2 { font-size: 1.1rem; margin: 0 0 10px; }
+    .order-row { font-size: 0.85rem; padding: 8px 0; border-bottom: 1px solid var(--border); display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+    .order-row:last-child { border-bottom: none; }
+    .order-row .market { font-weight: 600; }
+    .order-row .time { color: var(--muted); }
+    .login-prompt { padding: 20px; text-align: center; color: var(--muted); }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <a class="back" href="/frontend.html">← Back to matches</a>
+    <h1>My bets</h1>
+    <p style="color: var(--muted); font-size: 0.9rem;">Your open positions and bet history.</p>
+
+    <div id="content">
+      <p style="color: var(--muted);">Loading…</p>
+    </div>
+  </div>
+  <script src="auth.js"></script>
+  <script>
+    const content = document.getElementById('content');
+
+    async function load() {
+      if (!auth.isLoggedIn()) {
+        content.innerHTML = '<div class="login-prompt"><a href="/auth.html">Log in</a> to see your bets.</div>';
+        return;
+      }
+      const res = await fetch('/api/bets', { headers: auth.getAuthHeader() });
+      if (res.status === 401) {
+        auth.logout();
+        content.innerHTML = '<div class="login-prompt">Session expired. <a href="/auth.html">Log in again</a> to see your bets.</div>';
+        return;
+      }
+      if (!res.ok) {
+        content.innerHTML = '<p style="color: #ef4444;">Failed to load bets. Try refreshing.</p>';
+        return;
+      }
+      const data = await res.json();
+      if (data.balance != null) {
+        const u = auth.getUser();
+        if (u) { u.balance = data.balance; localStorage.setItem('frc_bet_user', JSON.stringify(u)); }
+      }
+      const hasPositions = data.positions && data.positions.length > 0;
+      const hasHistory = data.orderHistory && data.orderHistory.length > 0;
+
+      let html = '';
+
+      html += '<div class="section"><h2>Positions</h2>';
+      if (!hasPositions) {
+        html += '<p class="card meta">No open positions. <a href="/frontend.html">Trade on a match</a> to add bets here.</p>';
+      } else {
+        data.positions.forEach(function (p) {
+          const status = p.resolved !== null ? ' (Resolved: ' + (p.winner || 'tie') + ')' : '';
+          const isWin = p.profit != null && p.profit > 0;
+          const cardClass = 'card' + (isWin ? ' won' : '');
+          html += '<div class="' + cardClass + '">';
+          html += '<h3>' + (p.question || p.marketId) + status + '</h3>';
+          html += '<div class="meta">' + p.marketId + (p.totalRed != null && p.totalBlue != null ? ' · Pool: Red $' + p.totalRed.toFixed(2) + ' / Blue $' + p.totalBlue.toFixed(2) : '') + '</div>';
+          html += '<div class="position"><span class="red">Red $' + (p.red || 0).toFixed(2) + '</span> · <span class="blue">Blue $' + (p.blue || 0).toFixed(2) + '</span></div>';
+          if (isWin) html += '<div class="earned">You earned $' + Number(p.profit).toFixed(2) + '</div>';
+          html += '<a href="/market.html?match=' + encodeURIComponent(p.marketId) + '">View market →</a>';
+          html += '</div>';
+        });
+      }
+      html += '</div>';
+
+      html += '<div class="section"><h2>Bet history</h2>';
+      if (!hasHistory) {
+        html += '<p class="card meta">No bets yet.' + (hasPositions ? '' : ' Place a bet on a <a href="/frontend.html">match</a> and it will show up here.') + '</p>';
+      } else {
+        const list = data.orderHistory.slice().reverse();
+        list.forEach(function (o) {
+          const timeStr = o.timestamp ? (function () { try { return new Date(o.timestamp).toLocaleString(); } catch (_) { return ''; } })() : '';
+          html += '<div class="order-row">';
+          html += '<span class="market">' + (o.side || '').toUpperCase() + ' $' + (o.amount != null ? Number(o.amount).toFixed(2) : '0') + '</span>';
+          html += '<span class="meta">' + (o.marketId || '') + '</span>';
+          html += '<span class="time">' + timeStr + '</span>';
+          html += '</div>';
+        });
+      }
+      html += '</div>';
+
+      content.innerHTML = html;
+    }
+
+    (async function () {
+      await auth.fetchMe();
+      load();
+    })();
+  </script>
+</body>
+</html>
