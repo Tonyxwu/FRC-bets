@@ -1,1 +1,4 @@
 node_modules/
+.env
+envVars.env
+data/store.json

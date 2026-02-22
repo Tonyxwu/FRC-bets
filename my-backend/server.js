@@ -1,11 +1,40 @@
-const express = require("express");
-const axios = require("axios");
 const path = require("path");
 const fs = require("fs");
+
+function loadEnvFile(filePath) {
+  try {
+    const raw = fs.readFileSync(filePath, "utf8");
+    raw.split("\n").forEach((line) => {
+      const trimmed = line.trim();
+      if (trimmed && !trimmed.startsWith("#")) {
+        const eq = trimmed.indexOf("=");
+        if (eq > 0) {
+          const key = trimmed.slice(0, eq).trim();
+          let val = trimmed.slice(eq + 1).trim();
+          if (val.startsWith('"') && val.endsWith('"')) val = val.slice(1, -1);
+          if (val.startsWith("'") && val.endsWith("'")) val = val.slice(1, -1);
+          process.env[key] = val;
+        }
+      }
+    });
+  } catch (e) {
+    if (e.code !== "ENOENT") console.error("loadEnvFile:", e.message);
+  }
+}
+
+loadEnvFile(path.join(__dirname, ".env"));
+if (!process.env.TBA_KEY) loadEnvFile(path.join(__dirname, "envVars.env"));
+
+const express = require("express");
+const axios = require("axios");
 const crypto = require("crypto");
 
 const app = express();
-const TBA_KEY = process.env.TBA_KEY;
+const TBA_KEY = process.env.TBA_KEY || "";
+if (!TBA_KEY) {
+  console.error("TBA_KEY is not set. Copy .env.example to .env and set TBA_KEY (or set it in envVars.env).");
+  process.exit(1);
+}
 const DEFAULT_EVENT = "2025txdal";
 const DEFAULT_BALANCE = 100;
 const STORE_PATH = path.join(__dirname, "data", "store.json");
@@ -85,9 +114,32 @@ let loaded = loadStore();
 const users = loaded ? loaded.users : new Map();
 let nextUserId = loaded ? loaded.nextUserId : 1;
 const markets = loaded ? loaded.markets : new Map();
-const bets = loaded ? loaded.bets : [];
-const marketTotals = loaded ? loaded.marketTotals : {};
+let bets = loaded ? loaded.bets : [];
+let marketTotals = loaded ? loaded.marketTotals : {};
 const sessions = loaded ? loaded.sessions : new Map();
+
+const RESET_BALANCES_AND_BETS = /^(1|true|yes)$/i.test(String(process.env.RESET_BALANCES_AND_BETS || "").trim());
+if (RESET_BALANCES_AND_BETS) {
+  users.forEach((u) => { u.balance = DEFAULT_BALANCE; });
+  bets = [];
+  marketTotals = {};
+  markets.forEach((m) => { m.resolved = null; m.winner = null; });
+  const data = {
+    users: Object.fromEntries(users),
+    nextUserId,
+    markets: Object.fromEntries(markets),
+    bets,
+    marketTotals,
+    sessions: Object.fromEntries(sessions),
+  };
+  try {
+    fs.mkdirSync(path.dirname(STORE_PATH), { recursive: true });
+    fs.writeFileSync(STORE_PATH, JSON.stringify(data, null, 2), "utf8");
+    console.log("RESET_BALANCES_AND_BETS=true: all balances set to $" + DEFAULT_BALANCE + ", all bets and pool totals cleared, markets reopened.");
+  } catch (e) {
+    console.error("Reset save failed:", e.message);
+  }
+}
 
 function hashPassword(password) {
   return crypto.createHash("sha256").update(password).digest("hex");
@@ -492,8 +544,7 @@ app.get("/api/markets/:marketId/position", (req, res) => {
 });
 
 // Resolution is automatic when the market is fetched and TBA has scores (no user action).
-
-app.listen(3000, () => {
+app.listen(process.env.PORT || 3000, () => {
   console.log("Server running on http://localhost:3000");
   if (virtualStartUnix != null) {
     console.log("Simulation: set VIRTUAL_START_TIME (e.g. 2025-02-20T08:00:00) and optional VIRTUAL_SPEED (default 10) to test multiplayer betting in fast-forward.");
