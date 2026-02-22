@@ -1,0 +1,25 @@
+{
+  "name": "FRC Match Markets",
+  "short_name": "Match Markets",
+  "description": "Bet on FRC matches – back your alliance",
+  "start_url": "/frontend.html",
+  "scope": "/",
+  "display": "standalone",
+  "theme_color": "#161a22",
+  "background_color": "#0d0f14",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/icon.webp",
+      "sizes": "192x192",
+      "type": "image/webp",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon.webp",
+      "sizes": "512x512",
+      "type": "image/webp",
+      "purpose": "any maskable"
+    }
+  ]
+}

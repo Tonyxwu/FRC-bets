@@ -77,6 +77,16 @@ function maskMatchIfSim(match) {
 }
 
 app.use(express.json());
+// PWA: serve service worker with no-cache so updates apply
+app.get("/sw.js", function (req, res) {
+  res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate");
+  res.sendFile(path.join(__dirname, "public", "sw.js"));
+});
+// PWA: serve manifest with correct MIME type
+app.get("/manifest.webmanifest", function (req, res) {
+  res.setHeader("Content-Type", "application/manifest+json");
+  res.sendFile(path.join(__dirname, "public", "manifest.webmanifest"));
+});
 app.use(express.static(path.join(__dirname, "public")));
 
 // --- Persistence: load store ---
